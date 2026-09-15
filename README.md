@@ -1,75 +1,87 @@
-# React + TypeScript + Vite
+# FNPH Kaduna Telepsychiatry: web front end
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19, TypeScript, Vite and Tailwind 4 front end for the three portals in the FNPH Kaduna Telepsychiatry blueprint: the patient portal, the FNPH Core Engine and the Centres of Excellence. It talks to `fnph-telepsychiatric` (Spring Boot) over `/api/v1`.
 
-Currently, two official plugins are available:
+## Status
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**Phase 1, foundation.** Public site with the three entrances, help, document verification and the emergency notice on every public and patient screen (the number comes from the backend, with the last known value kept for offline display). Sign-in with no role selector, authenticator verification or first-time enrolment, and a recovery-code gate. Activation, password reset, forced password change, profile and signed-in devices. The Central Administrator console: overview, users, roles, supervised view, audit log with chain verification, and governed configuration. Idle sign-out matching the server timeout.
 
-## React Compiler
+**Phase 2, FNPH patient pathway.**
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Patients: enrolment by EHR number, then a five-step booking flow (consent, safety questions, time, vital signs, payment). A triage stop replaces the flow with the emergency contact and nothing that leads back to booking. The held time counts down, a refresh resumes the hold, and payment shows fee, credit and amount due with the RRR. Appointments with history and a join button once the room opens. Documents readable on screen, a warned single download, and the verification code.
+- Hub Coordinator: approvals with rota-filtered doctors, patient-service rooms and the care team; rejection with a reason the patient sees; the release desk, bundle release or block, and review queries.
+- Nursing and HIM: one work queue. Nurses verify the patient's readings before completing preparation.
+- Doctors: worklist with pre-review vitals, the consultation room (identity confirmation first, session clock, modality changes, early termination with a safety action), and the clinical record: note draft, sign and amend, prescriptions with correction, investigations, follow-up, and explicit "not needed" for each.
+- Pharmacy and laboratory: review queue showing the document's items, forward-only submit.
 
-## Expanding the ESLint configuration
+Still holding pages: Finance, ICT and Helpdesk (Phase 4) and the Centre of Excellence roles (Phase 3).
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Run it
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+cp .env.example .env.local
+npm install
+npm run dev            # http://localhost:5173, /api proxied to VITE_API_PROXY_TARGET
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+The backend must have `APP_PORTAL_URL=http://localhost:5173` so the links in invitation and reset emails open this app.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Without the backend
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
+npm run mock           # http://localhost:4173
+```
+
+`scripts/mock-api.mjs` and `scripts/mock-phase2.mjs` serve the build and fake the API for UI review only. They are never deployed.
+
+Password `Prototype123456` for every account, authenticator code `123456`:
+
+| Account | Role | Notes |
+| --- | --- | --- |
+| `admin` | Central Administrator | Enrols an authenticator on first sign-in |
+| `hub` | Hub Coordinator | |
+| `doctor` | Doctor | Has a consultation starting a few minutes after the mock starts |
+| `ruth` | Nurse | |
+| `nurse` | Nurse | Must change password first |
+| `him` | Health Information Management | |
+| `pharm`, `lab` | Pharmacist, Laboratory Technician | |
+| `204815` | Patient | Sign in at `/patients`. Answering Yes to the second safety question stops the booking |
+
+The mock walks the whole pathway: book and pay (the second "check now" confirms), approve, verify vitals, consult, review, release, download once. State resets when the mock restarts. Also try `/activate?token=demo` and `/verify/valid-demo`.
+
+## Checks
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Layout
 
 ```
+src/
+  app/            router and lazily loaded admin pages
+  components/     ui primitives and the public and workspace layouts
+  features/auth/  sign-in state machine
+  lib/api/        HTTP client, DTO types (each names its Java class), endpoint modules
+  lib/auth/       auth provider, route guards, role registry
+  lib/            time formatting (always WAT), password rules, hooks
+  pages/          public, auth, account, admin, workspace
+deploy/nginx.conf production reverse proxy and security headers
+```
+
+## Security decisions
+
+- The access token lives in memory only. The refresh token sits in `sessionStorage`, scoped to the tab, because the API returns it in the response body. Moving it to an httpOnly cookie is on the Phase 4 hardening list and needs a backend change.
+- Refreshes are single-flight. The backend revokes the whole sign-in if a refresh token is reused, so parallel refreshes would sign people out.
+- The app loads no third-party script or font. Fonts are bundled.
+- Route guards only shape the interface. The API enforces every permission and centre boundary.
+- The Central Administrator reaches another role's workspace only through an open supervised session, and the `X-View-As-Session` header is sent only while one is open.
+- All times display in West Africa Time, whatever the device clock says.
+- After sign-in, only known dashboard paths are followed, so a crafted value cannot redirect out of the app.
+
+## Production
+
+Build with `npm run build`, copy `dist/` to the server and use `deploy/nginx.conf`. Serving the app and `/api` from one origin avoids CORS entirely. Leave `VITE_API_BASE_URL` empty for that layout.

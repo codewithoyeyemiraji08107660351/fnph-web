@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+/*
+  FNPH Kaduna design tokens.
+  Palette, type and portal colour coding are taken from the approved prototypes:
+  patient green, Core Engine navy, Centre of Excellence gold, emergency red.
+*/
+@theme {
+  --font-sans: "DM Sans Variable", "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Manrope Variable", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-forest: #075b45;
+  --color-forest-600: #0a7459;
+  --color-forest-900: #043a2c;
+  --color-mint: #dff2e9;
+  --color-navy: #183c57;
+  --color-navy-900: #0f2c42;
+  --color-sky: #e2edf4;
+  --color-gold: #b77a10;
+  --color-gold-700: #8b5a08;
+  --color-sand: #f5ead5;
+  --color-alarm: #922f2b;
+  --color-alarm-700: #7d2c29;
+  --color-blush: #f7e4e2;
+  --color-ink: #17231f;
+  --color-muted: #5d6b65;
+  --color-line: #d9e2dd;
+  --color-canvas: #f3f7f4;
+  --color-soft: #edf4f0;
+  --color-amber-note: #fff4dc;
+
+  --shadow-lift: 0 22px 70px rgb(13 48 36 / 0.13);
+  --shadow-card: 0 10px 35px rgb(22 55 44 / 0.05);
+
+  --radius-card: 20px;
+  --radius-control: 12px;
+}
+
+/* Portal accent. Set data-portal on a container and every accent utility follows. */
+:root,
+[data-portal="patient"] {
+  --accent: var(--color-forest);
+  --accent-strong: var(--color-forest-900);
+  --accent-soft: var(--color-mint);
+}
+[data-portal="core"] {
+  --accent: var(--color-navy);
+  --accent-strong: var(--color-navy-900);
+  --accent-soft: var(--color-sky);
+}
+[data-portal="centre"] {
+  --accent: var(--color-gold-700);
+  --accent-strong: #6a4406;
+  --accent-soft: var(--color-sand);
+}
+
+@theme inline {
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+    min-width: 320px;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display text-ink;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+  }
+  p {
+    line-height: 1.65;
+  }
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 55%, white);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-mint);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .kicker {
+    @apply mb-2 block text-[0.7rem] font-extrabold uppercase text-accent;
+    letter-spacing: 0.13em;
+  }
+
+  .btn {
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-bold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-55;
+  }
+  .btn-primary {
+    @apply bg-accent text-white shadow-[0_8px_22px_rgb(7_91_69_/_0.16)] hover:bg-accent-strong;
+  }
+  .btn-secondary {
+    @apply border border-line bg-white text-accent hover:border-accent;
+  }
+  .btn-quiet {
+    @apply text-accent hover:bg-accent-soft;
+  }
+  .btn-danger {
+    @apply bg-alarm text-white hover:bg-alarm-700;
+  }
+  .btn-sm {
+    @apply min-h-9 px-3 py-1.5 text-xs;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-sm font-bold text-ink;
+  }
+  .field-hint {
+    @apply mt-1.5 block text-xs text-muted;
+  }
+  .field-error {
+    @apply mt-1.5 block text-xs font-semibold text-alarm;
+  }
+  .input {
+    @apply block min-h-11 w-full rounded-[var(--radius-control)] border border-line bg-white px-3.5 py-2.5 text-[0.95rem] text-ink placeholder:text-muted/70 focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent/15 disabled:bg-soft;
+  }
+  .input[aria-invalid="true"] {
+    @apply border-alarm focus:ring-alarm/15;
+  }
+
+  .card {
+    @apply rounded-[var(--radius-card)] border border-line bg-white shadow-[var(--shadow-card)];
+  }
+
+  .table-base {
+    @apply w-full border-collapse text-left text-sm;
+  }
+  .table-base th {
+    @apply border-b border-line px-4 py-3 text-[0.68rem] font-extrabold tracking-[0.08em] text-muted uppercase;
+  }
+  .table-base td {
+    @apply border-b border-line/70 px-4 py-3 align-top;
+  }
+  .table-base tbody tr:last-child td {
+    @apply border-b-0;
+  }
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}

@@ -1,0 +1,211 @@
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { bookingApi, paymentApi } from '@/lib/api/endpoints/patient'
+import { toApiError } from '@/lib/api/http'
+import type { Appointment, PaymentView } from '@/lib/api/types'
+import { formatDateTime, formatNaira, parseServerTime } from '@/lib/format'
+import { usePublicSettings } from '@/lib/hooks/usePublicSettings'
+import { Panel } from '@/components/ui/Page'
+import { Alert } from '@/components/ui/Alert'
+import { TextField } from '@/components/ui/Field'
+import { Spinner } from '@/components/ui/Spinner'
+
+const AUTO_CHECK_MS = 30_000
+const AUTO_CHECK_LIMIT = 20
+
+/** An unexpired payment the patient can still complete, so a refresh never issues a second RRR. */
+function resumable(payments: PaymentView[]): PaymentView | undefined {
+  const now = Date.now()
+  return payments.find(
+    (p) =>
+      !p.usedForBooking &&
+      (p.status === 'SUCCESS' || (p.status === 'PENDING' && (parseServerTime(p.expiresAt)?.getTime() ?? now + 1) > now)),
+  )
+}
+
+function Breakdown({ payment }: { payment: PaymentView }) {
+  const credit = Number(payment.creditApplied)
+  return (
+    <dl className="divide-y divide-line rounded-[14px] border border-line text-sm">
+      <div className="flex justify-between px-4 py-2.5">
+        <dt className="text-muted">Consultation fee</dt>
+        <dd>{formatNaira(payment.amount)}</dd>
+      </div>
+      {credit > 0 && (
+        <div className="flex justify-between px-4 py-2.5">
+          <dt className="text-muted">Credit on your account</dt>
+          <dd className="text-forest">-{formatNaira(credit)}</dd>
+        </div>
+      )}
+      <div className="flex justify-between px-4 py-3 text-base">
+        <dt className="font-bold">To pay</dt>
+        <dd className="font-display font-extrabold">{formatNaira(payment.payableAmount)}</dd>
+      </div>
+    </dl>
+  )
+}
+
+export function PaymentStep({ appointment }: { appointment: Appointment }) {
+  const qc = useQueryClient()
+  const { helpdeskEmail } = usePublicSettings()
+  const history = useQuery({ queryKey: ['my-payments'], queryFn: paymentApi.mine })
+  const credit = useQuery({ queryKey: ['my-credit'], queryFn: paymentApi.credit })
+  const [payment, setPayment] = useState<PaymentView | null>(null)
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  const checks = useRef(0)
+
+  useEffect(() => {
+    if (payment || !history.data) return
+    const existing = resumable(history.data)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (existing) setPayment(existing)
+  }, [history.data, payment])
+
+  // Once money is confirmed, the booking moves to the hospital's desk shortly after.
+  const paid = payment?.status === 'SUCCESS'
+  const booking = useQuery({
+    queryKey: ['my-appointments', 'confirming'],
+    queryFn: bookingApi.mine,
+    enabled: paid && !confirmed,
+    refetchInterval: 4000,
+  })
+  useEffect(() => {
+    const current = booking.data?.find((a) => a.publicId === appointment.publicId)
+    if (current && current.status !== 'SLOT_HELD' && current.status !== 'EXPIRED') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setConfirmed(true)
+      sessionStorage.removeItem('fnph.booking.vitalsFor')
+      void qc.invalidateQueries({ queryKey: ['my-appointments'] })
+    }
+  }, [booking.data, appointment.publicId, qc])
+
+  const check = async (silent = false) => {
+    if (!payment) return
+    if (!silent) {
+      setChecking(true)
+      setError(null)
+    }
+    try {
+      setPayment(await paymentApi.verify(payment.reference))
+    } catch (err) {
+      if (!silent) setError(toApiError(err).message)
+    } finally {
+      if (!silent) setChecking(false)
+    }
+  }
+
+  // Gentle automatic checks while the patient pays elsewhere.
+  useEffect(() => {
+    if (payment?.status !== 'PENDING' || !payment.rrr) return
+    const t = window.setInterval(() => {
+      if (checks.current >= AUTO_CHECK_LIMIT || document.hidden) return
+      checks.current += 1
+      void check(true)
+    }, AUTO_CHECK_MS)
+    return () => window.clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payment?.status, payment?.reference, payment?.rrr])
+
+  const start = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      setPayment(await paymentApi.initiate({ email: email.trim() || undefined, phone: phone.trim() || undefined }))
+      void qc.invalidateQueries({ queryKey: ['my-payments'] })
+    } catch (err) {
+      setError(toApiError(err).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (confirmed) {
+    return (
+      <Panel>
+        <span className="grid size-12 place-items-center rounded-2xl bg-mint text-xl text-forest">
+          <i aria-hidden className="bi bi-check2-circle" />
+        </span>
+        <h2 className="mt-4 text-2xl font-extrabold">Your request is with the hospital</h2>
+        <p className="mt-2 text-sm text-muted">
+          Payment confirmed and your time, {formatDateTime(appointment.appointmentDate)} WAT, is reserved. The Hub Coordinator confirms the doctor and room, and you will be notified.
+          Reference <strong className="text-ink">{appointment.reference}</strong>.
+        </p>
+        {payment?.amountMismatch && <Alert tone="info" className="mt-4">You paid more than was due. The difference is on your account as credit for a future booking.</Alert>}
+        <Link to="/portal/appointments" className="btn btn-primary mt-5 no-underline">
+          See my appointments
+        </Link>
+      </Panel>
+    )
+  }
+
+  if (history.isLoading) return <Spinner label="Checking your payments" />
+
+  return (
+    <Panel title="Pay the consultation fee">
+      {error && <Alert tone="danger" className="mb-4">{error}</Alert>}
+
+      {!payment ? (
+        <form onSubmit={start} noValidate>
+          {credit.data && Number(credit.data.balance) > 0 && (
+            <Alert tone="success" className="mb-4">You have {formatNaira(credit.data.balance)} in credit. It is used automatically.</Alert>
+          )}
+          <p className="text-sm text-muted">You will get a Remita Retrieval Reference (RRR) to pay with. Add contact details if you want Remita to send you a receipt.</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <TextField label="Email for the receipt (optional)" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <TextField label="Phone for the receipt (optional)" type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <button type="submit" className="btn btn-primary mt-5" disabled={busy}>
+            {busy ? <Spinner label="Starting" inverted /> : 'Get my payment reference'}
+          </button>
+        </form>
+      ) : paid ? (
+        <div className="space-y-4">
+          <Breakdown payment={payment} />
+          <div className="flex items-center gap-3 rounded-[14px] bg-mint px-4 py-3 text-sm text-forest-900">
+            <Spinner /> Payment confirmed. Sending your request to the hospital.
+          </div>
+        </div>
+      ) : payment.status === 'PENDING' ? (
+        <div className="space-y-5">
+          <Breakdown payment={payment} />
+          {payment.rrr && (
+            <div className="rounded-[16px] border-2 border-dashed border-accent p-5 text-center">
+              <p className="text-xs font-bold tracking-wide text-muted uppercase">Your RRR</p>
+              <p className="mt-1 font-mono text-3xl font-bold tracking-widest select-all">{payment.rrr}</p>
+              <button type="button" className="btn btn-quiet btn-sm mt-2" onClick={() => navigator.clipboard?.writeText(payment.rrr ?? '')}>
+                <i aria-hidden className="bi bi-clipboard" /> Copy
+              </button>
+            </div>
+          )}
+          <div className="text-sm">
+            <p className="font-bold">How to pay</p>
+            <p className="mt-1 text-muted">
+              Pay {formatNaira(payment.payableAmount)} against this RRR through your bank app, internet banking, at any bank branch, or on the Remita website. Keep the receipt. The
+              reference is valid until {formatDateTime(payment.expiresAt)} WAT, but your held time runs out sooner.
+            </p>
+          </div>
+          <button type="button" className="btn btn-primary w-full sm:w-auto" disabled={checking} onClick={() => check()}>
+            {checking ? <Spinner label="Asking Remita" inverted /> : 'I have paid, check now'}
+          </button>
+          <p className="text-xs text-muted">We also check every half minute while this page is open. Only a confirmation from Remita counts, so returning to this page is not enough on its own.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <Alert tone="danger" title="This payment did not go through">
+            {payment.failureReason ?? 'Remita did not confirm it.'} If money left your account, contact <a href={`mailto:${helpdeskEmail}`}>{helpdeskEmail}</a> with reference {payment.reference}.
+          </Alert>
+          <button type="button" className="btn btn-primary" onClick={() => setPayment(null)}>
+            Start the payment again
+          </button>
+        </div>
+      )}
+    </Panel>
+  )
+}
