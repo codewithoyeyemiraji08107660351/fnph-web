@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { documentsApi, myRecordsApi } from '@/lib/api/endpoints/patient'
+import { followUpsApi, uploadsApi } from '@/lib/api/endpoints/records'
+import { FileList } from '@/features/files/AttachedFiles'
 import { toApiError } from '@/lib/api/http'
 import type { IssuedDocument } from '@/lib/api/types'
 import { formatDateTime, humanise } from '@/lib/format'
@@ -61,6 +63,8 @@ export function Documents() {
   const [error, setError] = useState<string | null>(null)
   const [qrFor, setQrFor] = useState<IssuedDocument | null>(null)
   const [open, setOpen] = useState<string | null>(null)
+  const followUps = useQuery({ queryKey: ['my-follow-ups'], queryFn: followUpsApi.mine })
+  const files = useQuery({ queryKey: ['my-files'], queryFn: uploadsApi.mine })
 
   const download = async (d: IssuedDocument) => {
     setDownloading(true)
@@ -169,6 +173,30 @@ export function Documents() {
           )
         })}
       </ul>
+
+      {!!followUps.data?.length && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-xl font-extrabold">What your doctor recommended</h2>
+          <ul className="space-y-3">
+            {followUps.data.map((f) => (
+              <li key={f.publicId} className="card p-4 text-sm">
+                <p className="whitespace-pre-line">{f.recommendation}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {f.reviewInterval && f.reviewInterval !== 'null' ? `Review in ${f.reviewInterval}. ` : ''}
+                  {f.preferredDate ? `Suggested date ${f.preferredDate}. ` : ''}Written {formatDateTime(f.createdAt)}.
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <section className="mt-8">
+        <h2 className="mb-3 text-xl font-extrabold">Files you sent</h2>
+        <div className="card p-4">
+          {files.isLoading ? <Spinner /> : <FileList rows={files.data ?? []} onChanged={() => void qc.invalidateQueries({ queryKey: ['my-files'] })} />}
+          <p className="mt-2 text-xs text-muted">Attach a result from the appointment it belongs to.</p>
+        </div>
+      </section>
 
       {confirming && (
         <Dialog

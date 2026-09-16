@@ -681,6 +681,25 @@ export interface ConsultationSummary {
   patientJoinedAt?: IsoDateTime
   terminationReason?: TerminationReason
   safetyActionTaken?: string
+  /** Centre consultations only. */
+  centreName?: string
+  patientName?: string
+  referralReason?: string
+}
+
+/** CentreClinicalController#mine */
+export interface CentreDoctorRow {
+  appointmentPublicId: string
+  reference: string
+  status: AppointmentStatus
+  appointmentDate: IsoDateTime
+  scheduledEndAt: IsoDateTime
+  room?: string
+  centreName: string
+  patientName: string
+  centrePatientId?: string
+  referralReason?: string
+  consultationPublicId?: string
 }
 
 export interface DocumentHeading {
@@ -699,4 +718,113 @@ export interface ConsultationRecord {
   prescriptions: DocumentHeading[]
   investigations: DocumentHeading[]
   followUps: Array<{ publicId: string; recommendation: string; reviewInterval?: string }>
+}
+
+/* ------------------------------------------------------------------
+   Phase 3: Centres of Excellence
+   ------------------------------------------------------------------ */
+
+/** CentreReferralService.UtilisationSummary. Counts only, never amounts. */
+export interface CentreUtilisation {
+  referralsAwaitingScheduling: number
+  referralsScheduled: number
+  consultationsCompleted: number
+  bundlesAwaitingAction: number
+}
+
+/** CentreAdminController#myCentre */
+export interface CentreProfile {
+  publicId: string
+  code: string
+  name: string
+  lga?: string
+  status: 'SETUP' | 'ACTIVE' | 'SUSPENDED'
+  capabilities: Array<{ capability: 'PHARMACY' | 'LABORATORY' | 'HIM'; enabled: boolean }>
+  utilisation: CentreUtilisation
+}
+
+/** CentreAdminController#myPatients */
+export interface CentrePatientRow {
+  publicId: string
+  centrePatientId?: string
+  name: string
+  dateOfBirth: string
+  phoneNumber: string
+}
+
+export interface RegisterCentrePatient {
+  centrePatientId?: string
+  firstName: string
+  lastName: string
+  middleName?: string
+  dateOfBirth: string
+  gender?: string
+  phoneNumber: string
+  email?: string
+  address?: string
+  fnphEhrNumber?: string
+}
+
+export type ReferralStatus = 'DRAFT' | 'SUBMITTED' | 'SCHEDULED' | 'RETURNED' | 'COMPLETED' | 'WITHDRAWN'
+
+/** centre/api/CentreReferralResponse */
+export interface CentreReferral {
+  publicId: string
+  reference: string
+  centrePatientId?: string
+  patientName: string
+  status: ReferralStatus
+  urgency: 'ROUTINE' | 'SOON'
+  consentAcceptedAt?: IsoDateTime
+  consentWitnessedBy?: string
+  submittedAt?: IsoDateTime
+  createdAt: IsoDateTime
+}
+
+export interface CreateReferral {
+  centrePatientPublicId: string
+  referralReason: string
+  assessment?: string
+  currentCondition?: string
+  relevantMedicines?: string
+  previousResults?: string
+  urgency?: 'ROUTINE' | 'SOON'
+}
+
+/** CentreController#appointments */
+export interface CentreAppointmentRow {
+  publicId: string
+  reference: string
+  status: AppointmentStatus
+  appointmentDate: IsoDateTime
+  scheduledEndAt: IsoDateTime
+  joinWindowOpensAt: IsoDateTime
+  room?: string
+  patientName: string
+  centrePatientId?: string
+  referralReference?: string
+  /** Why FNPH returned the request, when it did. */
+  returnedReason?: string
+}
+
+/** CentreController#toQueueItem */
+export interface CentreBundleRow {
+  publicId: string
+  centrePatientId?: string
+  patientName: string
+  appointmentReference: string
+  deliveredAt?: IsoDateTime
+  firstOpenedAt?: IsoDateTime
+  outstanding: boolean
+}
+
+/** CentreBookingController#centreQueue */
+export interface CentreApprovalRow {
+  publicId: string
+  reference: string
+  centre: string
+  patient: string
+  centrePatientId?: string
+  appointmentDateTime: IsoDateTime
+  referralReason?: string
 }

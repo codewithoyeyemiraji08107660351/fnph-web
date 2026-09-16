@@ -11,6 +11,8 @@ import { ReasonDialog } from '@/components/ui/ReasonDialog'
 import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/Toast'
 import { VitalsList } from './VitalsList'
+import { useAuth } from '@/lib/auth/AuthProvider'
+import { AttachedFiles } from '@/features/files/AttachedFiles'
 import { useNow } from '@/lib/hooks/useNow'
 
 const COPY: Record<QueueKind, { title: string; description: string; completeLabel: string }> = {
@@ -27,6 +29,7 @@ const COPY: Record<QueueKind, { title: string; description: string; completeLabe
 }
 
 function Row({ kind, row, onChanged }: { kind: QueueKind; row: WorkQueueRow; onChanged: () => void }) {
+  const { can } = useAuth()
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -89,7 +92,12 @@ function Row({ kind, row, onChanged }: { kind: QueueKind; row: WorkQueueRow; onC
           <button type="button" className="btn btn-quiet btn-sm mt-2 -ml-3" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
             <i aria-hidden className={`bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}`} /> {open ? 'Hide readings' : 'Show readings'}
           </button>
-          {open && <div className="mt-2"><VitalsList appointmentPublicId={row.appointmentPublicId} /></div>}
+          {open && (
+            <div className="mt-2 space-y-3">
+              <VitalsList appointmentPublicId={row.appointmentPublicId} />
+              {can('upload.read') && <div><p className="mb-1 text-xs font-bold text-muted">Files the patient sent</p><AttachedFiles referenceId={row.appointmentPublicId} /></div>}
+            </div>
+          )}
         </>
       )}
       {raising && (

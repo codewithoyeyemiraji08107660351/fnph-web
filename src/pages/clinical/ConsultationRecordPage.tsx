@@ -1,12 +1,13 @@
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { recordApi } from '@/lib/api/endpoints/clinical'
+import { recordApiFor, type ConsultKind } from '@/lib/api/endpoints/clinical'
 import { formatDateTime, humanise } from '@/lib/format'
 import { ClinicalPanel } from '@/features/consult/ClinicalPanel'
 import { ErrorState, PageHeader, Panel } from '@/components/ui/Page'
 import { Spinner } from '@/components/ui/Spinner'
 
-export function ConsultationRecordPage() {
+export function ConsultationRecordPage({ kind = 'fnph' }: { kind?: ConsultKind }) {
+  const recordApi = recordApiFor(kind)
   const { consultationId = '' } = useParams()
   const summary = useQuery({ queryKey: ['consultation', consultationId], queryFn: () => recordApi.summary(consultationId) })
   if (summary.isLoading) return <Spinner label="Loading the consultation" />
@@ -19,6 +20,7 @@ export function ConsultationRecordPage() {
     ['Modality', c.modality ? humanise(c.modality) : undefined],
     ['Identity', c.identityConfirmed ? 'Confirmed' : 'Not confirmed'],
     ['Outcome', c.outcome ? humanise(c.outcome) : c.endedAt ? 'Ended' : 'Open'],
+    ['Centre', c.centreName ? `${c.patientName} at ${c.centreName}` : undefined],
     ['Ended early', c.terminationReason ? humanise(c.terminationReason) : undefined],
     ['Safety action', c.safetyActionTaken],
   ]
@@ -37,7 +39,7 @@ export function ConsultationRecordPage() {
             ))}
           </dl>
         </Panel>
-        <ClinicalPanel consultationId={consultationId} />
+        <ClinicalPanel consultationId={consultationId} kind={kind} />
       </div>
     </>
   )

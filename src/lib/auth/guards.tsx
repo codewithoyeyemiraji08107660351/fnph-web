@@ -39,9 +39,19 @@ export function RequireRole({ roles, children }: { roles: string[]; children: Re
 }
 
 export function RequirePermission({ permission, children }: { permission: string; children: ReactNode }) {
-  const { can, principal } = useAuth()
+  const { can, principal, supervision } = useAuth()
   if (!principal) return null
   if (can(permission)) return <>{children}</>
+  // Inside a supervised workspace, say why instead of bouncing to the
+  // administrator's own dashboard, which reads as the screen being broken.
+  if (supervision && window.location.pathname.startsWith(supervision.dashboardRoute)) {
+    return (
+      <div className="card mx-auto max-w-xl p-6 text-center">
+        <p className="font-display text-lg font-extrabold">Not available in a supervised view</p>
+        <p className="mt-2 text-sm text-muted">This screen changes records, and supervision is read-only. Nothing here can be done on {supervision.targetFullName}’s behalf.</p>
+      </div>
+    )
+  }
   return <Navigate to={safeDashboardRoute(principal.dashboardRoute)} replace />
 }
 

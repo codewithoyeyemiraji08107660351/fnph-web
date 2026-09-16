@@ -25,6 +25,8 @@ interface AuthContextValue {
   endedReason: string | null
   clearEndedReason: () => void
   can: (permission: string) => boolean
+  /** The signed-in account's own permissions, ignoring any supervised session. For the account's own navigation. */
+  canOwn: (permission: string) => boolean
   hasRole: (...codes: string[]) => boolean
   /** Stores tokens from a completed sign-in step and loads the principal. */
   completeSignIn: (response: LoginResponse) => Promise<Principal>
@@ -154,16 +156,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthContextValue>(() => {
-    // While supervising, the screens of the supervised workspace show. The
-    // server returns what the session may use; the API still decides each call.
-    const permissions = new Set([...(principal?.permissions ?? []), ...(supervision?.availablePermissions ?? [])])
+    const own = new Set(principal?.permissions ?? [])
+    // Supervision is read-only. Inside the supervised workspace, controls
+    // render from the session's permissions alone (the target's non-mutating
+    // ones), so the administrator never sees a sign or approve button that the
+    // server would refuse. Elsewhere, the administrator's own apply.
+    const supervised = new Set(supervision?.availablePermissions ?? [])
+    const permissionsHere = () =>
+      supervision && window.location.pathname.startsWith(supervision.dashboardRoute) ? supervised : own
     const roles = new Set(principal?.roles ?? [])
     return {
       status,
       principal,
       endedReason,
       clearEndedReason: () => setEndedReason(null),
-      can: (permission) => permissions.has(permission),
+      can: (permission) => permissionsHere().has(permission),
+      canOwn: (permission) => own.has(permission),
       hasRole: (...codes) => codes.some((c) => roles.has(c)),
       completeSignIn,
       signOut,

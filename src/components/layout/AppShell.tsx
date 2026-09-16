@@ -12,10 +12,11 @@ import { useToast } from '@/components/ui/Toast'
 import { Spinner } from '@/components/ui/Spinner'
 
 function useNavigation(): NavItem[] {
-  const { principal, can, supervision } = useAuth()
+  const { principal, canOwn, supervision } = useAuth()
   if (!principal) return []
   if (principal.roles.includes(CENTRAL_ADMINISTRATOR)) {
-    const items = ADMIN_NAV.filter((n) => !n.permission || can(n.permission))
+    // The administrator's own menu follows their own permissions, even mid-supervision.
+    const items = ADMIN_NAV.filter((n) => !n.permission || canOwn(n.permission))
     const supervised = supervision ? ROLE_BY_CODE[supervision.targetRole] : undefined
     return supervised ? [...items, ...supervised.nav.map((n) => ({ ...n, label: `${n.label} (supervised)` }))] : items
   }
@@ -102,7 +103,7 @@ function UserMenu() {
 }
 
 export function AppShell() {
-  const { principal, signOut } = useAuth()
+  const { principal, signOut, canOwn } = useAuth()
   const nav = useNavigation()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
@@ -166,6 +167,11 @@ export function AppShell() {
           </ul>
         </nav>
         <div className="border-t border-white/10 p-3">
+          {canOwn('ticket.create') && (
+            <NavLink to="/support" className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[12px] px-3 text-sm font-semibold no-underline ${isActive ? 'bg-white text-accent-strong' : 'text-white/80 hover:bg-white/10'}`}>
+              <i aria-hidden className="bi bi-life-preserver" /> Get help
+            </NavLink>
+          )}
           <NavLink to="/account" className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[12px] px-3 text-sm font-semibold no-underline ${isActive ? 'bg-white text-accent-strong' : 'text-white/80 hover:bg-white/10'}`}>
             <i aria-hidden className="bi bi-person-gear" /> Account and security
           </NavLink>

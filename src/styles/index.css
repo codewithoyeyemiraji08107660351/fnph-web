@@ -154,3 +154,10 @@
 @utility scrollbar-thin {
   scrollbar-width: thin;
 }
+
+/* Scroll containers must contain their absolutely positioned children
+   (screen-reader-only table headings, for one); otherwise those escape and
+   widen the page on a phone. */
+.overflow-x-auto {
+  position: relative;
+}

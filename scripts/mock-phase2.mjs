@@ -8,12 +8,12 @@ const watDay = (offsetDays) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Afr
 let seq = 100
 const id = (prefix) => `${prefix}-${++seq}`
 
-const PATIENTS = {
+export const PATIENTS = {
   'P-1': { name: 'Fatima Sani', ehr: '204815' },
   'P-2': { name: 'Yakubu Ali', ehr: '198304' },
 }
 
-const state = {
+export const state = {
   consentVersion: '2026.1',
   consented: false,
   triage: [],
@@ -237,7 +237,7 @@ export function handlePhase2({ req, res, url, path, m, me, body, send, err }) {
     const c = state.consultations[summary[1]]
     if (!c) return err(res, 404, 'No such consultation'), true
     const a = appt(c.appointment)
-    return send(res, 200, { publicId: c.publicId, scheduledStartAt: a.appointmentDate, scheduledEndAt: a.scheduledEndAt, startedAt: c.doctorJoinedAt, endedAt: c.endedAt ?? null, modality: c.modality, outcome: c.outcome ?? null, identityConfirmed: c.identityConfirmed, doctorJoinedAt: c.doctorJoinedAt ?? null, patientJoinedAt: c.patientJoinedAt ?? null, terminationReason: c.terminationReason ?? null, safetyActionTaken: c.safetyActionTaken ?? null }), true
+    return send(res, 200, { centreName: a.centreName ?? null, patientName: a.centreName ? PATIENTS[a.patientId].name : null, referralReason: a.referralReason ?? null, publicId: c.publicId, scheduledStartAt: a.appointmentDate, scheduledEndAt: a.scheduledEndAt, startedAt: c.doctorJoinedAt, endedAt: c.endedAt ?? null, modality: c.modality, outcome: c.outcome ?? null, identityConfirmed: c.identityConfirmed, doctorJoinedAt: c.doctorJoinedAt ?? null, patientJoinedAt: c.patientJoinedAt ?? null, terminationReason: c.terminationReason ?? null, safetyActionTaken: c.safetyActionTaken ?? null }), true
   }
   const rec = path.match(/^\/clinical\/consultations\/([^/]+)\/(.+)$/)
   if (rec) {
@@ -312,8 +312,8 @@ export function handlePhase2({ req, res, url, path, m, me, body, send, err }) {
 
   // ---------------- Queues ----------------
   if (path === '/clinical/queues/doctor') {
-    if (!can('consultation.join_as_doctor')) return deny(), true
-    return send(res, 200, state.appointments.filter((a) => a.doctor === me.publicId).map((a) => ({
+    if (!can('consultation.read')) return deny(), true
+    return send(res, 200, state.appointments.filter((a) => a.doctor === me.publicId && !a.centre).map((a) => ({
       appointmentPublicId: a.publicId, reference: a.reference, status: a.status, appointmentDate: a.appointmentDate, scheduledEndAt: a.scheduledEndAt, room: a.room,
       patientName: PATIENTS[a.patientId].name, ehrNumber: PATIENTS[a.patientId].ehr, nursingState: a.nursing, himState: a.himState,
       vitalsRecorded: (state.vitals[a.publicId] ?? []).length > 0,
@@ -391,7 +391,7 @@ export function handlePhase2({ req, res, url, path, m, me, body, send, err }) {
   // ---------------- Hub ----------------
   if (path === '/hub/approvals' && m === 'GET') {
     if (!can('appointment.read')) return deny(), true
-    const waiting = state.appointments.filter((a) => a.status === 'AWAITING_APPROVAL')
+    const waiting = state.appointments.filter((a) => a.status === 'AWAITING_APPROVAL' && !a.centre)
     return send(res, 200, { total: waiting.length, appointments: waiting.map(view) }), true
   }
   if (path === '/hub/approvals/assignable-staff') {

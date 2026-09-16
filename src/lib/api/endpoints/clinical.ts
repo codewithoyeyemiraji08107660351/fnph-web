@@ -2,6 +2,7 @@ import { api, seg } from '../http'
 import type {
   ClinicalComponent,
   ClinicalDocument,
+  CentreDoctorRow,
   ClinicalNote,
   ConsultationRecord,
   ConsultationSummary,
@@ -29,26 +30,38 @@ export const workQueueApi = {
   vitals: (appointmentPublicId: string) => api.get<VitalsReading[]>(`/clinical/vitals/appointments/${seg(appointmentPublicId)}`),
   verifyVitals: (vitalsPublicId: string) => api.post<VitalsReading>(`/clinical/vitals/${seg(vitalsPublicId)}/verify`),
   doctorQueue: () => api.get<DoctorQueueRow[]>('/clinical/queues/doctor'),
+  centreQueue: () => api.get<CentreDoctorRow[]>('/clinical/centre-consultations/mine'),
 }
 
-export const consultationApi = {
+export type ConsultKind = 'fnph' | 'centre'
+
+const roomBase = (kind: ConsultKind) => (kind === 'centre' ? '/centre-consultations' : '/consultations')
+
+export const consultationApiFor = (kind: ConsultKind) => ({
   /** Creates the room on first call. A state change, never a retry target. */
-  joinAsDoctor: (appointmentPublicId: string) => api.post<JoinResponse>(`/consultations/${seg(appointmentPublicId)}/join/doctor`),
+  joinAsDoctor: (appointmentPublicId: string) => api.post<JoinResponse>(`${roomBase(kind)}/${seg(appointmentPublicId)}/join/doctor`),
   joinAsPatient: (appointmentPublicId: string) => api.post<JoinResponse>(`/consultations/${seg(appointmentPublicId)}/join/patient`),
-  confirmIdentity: (consultationPublicId: string) => api.post<void>(`/consultations/${seg(consultationPublicId)}/identity-confirmed`),
+  /** Centre staff attend with the patient; they are a participant, not the owner. */
+  joinAsCentre: (appointmentPublicId: string) => api.post<JoinResponse>(`/centre-consultations/${seg(appointmentPublicId)}/join/centre`),
+  confirmIdentity: (consultationPublicId: string) => api.post<void>(`${roomBase(kind)}/${seg(consultationPublicId)}/identity-confirmed`),
   switchModality: (consultationPublicId: string, modality: 'VIDEO' | 'AUDIO' | 'PHONE_FALLBACK', reason?: string) =>
-    api.post<void>(`/consultations/${seg(consultationPublicId)}/modality`, null, { params: { modality, reason } }),
+    api.post<void>(`${roomBase(kind)}/${seg(consultationPublicId)}/modality`, null, { params: { modality, reason } }),
   terminate: (consultationPublicId: string, body: { reason: TerminationReason; note?: string; safetyAction: string }) =>
-    api.post<void>(`/consultations/${seg(consultationPublicId)}/terminate`, body),
-  /** Fire and forget. */
-  reportQuality: (consultationPublicId: string, role: 'DOCTOR' | 'PATIENT', metrics: { roundTripMs?: number; packetLossPercent?: number; videoQuality?: string }) =>
+    api.post<void>(`${roomBase(kind)}/${seg(consultationPublicId)}/terminate`, body),
+  /** FNPH consultations only. Fire and forget; a failed report must never disturb the session. */
+  reportQuality: (consultationPublicId: string, role: 'DOCTOR' | 'PATIENT', metrics: { roundTripMs?: number; videoQuality?: string }) =>
     api.post<void>(`/consultations/${seg(consultationPublicId)}/quality`, null, { params: { role, ...metrics } }).catch(() => undefined),
-}
+})
 
-const base = (id: string) => `/clinical/consultations/${seg(id)}`
+export const consultationApi = consultationApiFor('fnph')
 
-export const recordApi = {
-  summary: (consultationPublicId: string) => api.get<ConsultationSummary>(`/clinical/consultations/${seg(consultationPublicId)}`),
+
+
+export const recordApiFor = (kind: ConsultKind) => {
+  const root = kind === 'centre' ? '/clinical/centre-consultations' : '/clinical/consultations'
+  const base = (id: string) => `${root}/${seg(id)}`
+  return {
+  summary: (consultationPublicId: string) => api.get<ConsultationSummary>(base(consultationPublicId)),
   record: (consultationPublicId: string) => api.get<ConsultationRecord>(`${base(consultationPublicId)}/record`),
   history: (consultationPublicId: string) => api.get<ClinicalNote[]>(`${base(consultationPublicId)}/note/history`),
   save: (consultationPublicId: string, clinicalNote: string) => api.put<ClinicalNote>(`${base(consultationPublicId)}/note`, { clinicalNote }),
@@ -68,6 +81,9 @@ export const recordApi = {
   notRequired: (consultationPublicId: string, component: ClinicalComponent, reason: string) =>
     api.post<void>(`${base(consultationPublicId)}/not-required`, { component, reason }),
 }
+}
+
+export const recordApi = recordApiFor('fnph')
 
 export type ReviewKind = 'pharmacy' | 'laboratory'
 

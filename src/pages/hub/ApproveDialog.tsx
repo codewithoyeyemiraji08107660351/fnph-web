@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { approvalsApi } from '@/lib/api/endpoints/hub'
+import { centreApprovalsApi } from '@/lib/api/endpoints/centre'
 import { toApiError } from '@/lib/api/http'
-import type { Appointment, StaffOption } from '@/lib/api/types'
+import type { StaffOption } from '@/lib/api/types'
 import { formatDateTime, formatTime, parseServerTime, watDate } from '@/lib/format'
 import { Dialog } from '@/components/ui/Dialog'
 import { SelectField, TextAreaField } from '@/components/ui/Field'
@@ -16,10 +17,21 @@ const TEAM: Array<{ key: 'nursePublicId' | 'pharmacistPublicId' | 'laboratoryTec
   { key: 'laboratoryTechnicianPublicId', role: 'LABORATORY_TECHNICIAN', label: 'Laboratory technician', warning: 'Without a technician, any investigation request has nobody to review it and the release stalls.' },
 ]
 
-export function ApproveDialog({ appointment, onClose, onDone }: { appointment: Appointment; onClose: () => void; onDone: () => void }) {
+export interface ApprovableItem {
+  publicId: string
+  reference: string
+  appointmentDate: string
+  /** Absent on the centre queue, which lists the start only. */
+  scheduledEndAt?: string
+}
+
+export function ApproveDialog({ appointment, onClose, onDone, pathway = 'fnph' }: { appointment: ApprovableItem; onClose: () => void; onDone: () => void; pathway?: 'fnph' | 'centre' }) {
+  const centre = pathway === 'centre'
   const serviceDate = watDate(appointment.appointmentDate)
   const availability = useQuery({ queryKey: ['availability', serviceDate], queryFn: () => approvalsApi.availability(serviceDate) })
-  const rooms = useQuery({ queryKey: ['rooms', 'PATIENT_SERVICE'], queryFn: () => approvalsApi.rooms('PATIENT_SERVICE') })
+  // Each pathway has its own rooms. Offering the other kind gets refused by the server with no useful reason.
+  const roomType = centre ? 'CENTRE_CONSULTATION' : 'PATIENT_SERVICE'
+  const rooms = useQuery({ queryKey: ['rooms', roomType], queryFn: () => approvalsApi.rooms(roomType) })
   const staff = useQuery({ queryKey: ['assignable-staff'], queryFn: () => approvalsApi.staff() })
   const [doctor, setDoctor] = useState('')
   const [room, setRoom] = useState('')
@@ -32,7 +44,7 @@ export function ApproveDialog({ appointment, onClose, onDone }: { appointment: A
   // The server checks the rota covers the whole slot, so only those doctors are offered.
   const { eligible, unavailable } = useMemo(() => {
     const start = parseServerTime(appointment.appointmentDate)?.getTime() ?? 0
-    const end = parseServerTime(appointment.scheduledEndAt)?.getTime() ?? 0
+    const end = parseServerTime(appointment.scheduledEndAt)?.getTime() ?? start
     const rows = availability.data ?? []
     const covering = rows.filter((a) => a.available && (parseServerTime(a.startAt)?.getTime() ?? Infinity) <= start && (parseServerTime(a.endAt)?.getTime() ?? 0) >= end)
     const seen = new Set<string>()
@@ -50,15 +62,28 @@ export function ApproveDialog({ appointment, onClose, onDone }: { appointment: A
     setBusy(true)
     setError(null)
     try {
-      await approvalsApi.approve(appointment.publicId, {
-        doctorPublicId: doctor,
-        roomPublicId: room,
-        nursePublicId: team.nursePublicId || undefined,
-        pharmacistPublicId: team.pharmacistPublicId || undefined,
-        laboratoryTechnicianPublicId: team.laboratoryTechnicianPublicId || undefined,
-        himOfficerPublicId: team.himOfficerPublicId || undefined,
-        notes: notes.trim() || undefined,
-      })
+      if (centre) {
+        // Query parameters, and the team fields spelled differently again. No nurse:
+        // the centre provides the physical presence.
+        await centreApprovalsApi.approve(appointment.publicId, {
+          doctorPublicId: doctor,
+          roomPublicId: room,
+          pharmacistPublicId: team.pharmacistPublicId || undefined,
+          laboratoryPublicId: team.laboratoryTechnicianPublicId || undefined,
+          himPublicId: team.himOfficerPublicId || undefined,
+          notes: notes.trim() || undefined,
+        })
+      } else {
+        await approvalsApi.approve(appointment.publicId, {
+          doctorPublicId: doctor,
+          roomPublicId: room,
+          nursePublicId: team.nursePublicId || undefined,
+          pharmacistPublicId: team.pharmacistPublicId || undefined,
+          laboratoryTechnicianPublicId: team.laboratoryTechnicianPublicId || undefined,
+          himOfficerPublicId: team.himOfficerPublicId || undefined,
+          notes: notes.trim() || undefined,
+        })
+      }
       onDone()
     } catch (err) {
       // Approval spends the patient's money. No automatic retry, and no second
@@ -76,7 +101,7 @@ export function ApproveDialog({ appointment, onClose, onDone }: { appointment: A
       onClose={onClose}
       busy={busy}
       title={`Approve ${appointment.reference}`}
-      description={`${formatDateTime(appointment.appointmentDate)} to ${formatTime(appointment.scheduledEndAt)} WAT. Approving spends the patient's payment and notifies everyone assigned.`}
+      description={centre ? `${formatDateTime(appointment.appointmentDate)} WAT. Approving draws the centre booking charge from the centre's wallet and notifies everyone assigned.` : `${formatDateTime(appointment.appointmentDate)} to ${formatTime(appointment.scheduledEndAt)} WAT. Approving spends the patient's payment and notifies everyone assigned.`}
       footer={
         <>
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
@@ -124,7 +149,7 @@ export function ApproveDialog({ appointment, onClose, onDone }: { appointment: A
           </SelectField>
           <fieldset className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
             <legend className="mb-2 font-display font-extrabold">Care team</legend>
-            {TEAM.map((t) => (
+            {TEAM.filter((t) => !(centre && t.key === 'nursePublicId')).map((t) => (
               <div key={t.key}>
                 <SelectField label={t.label} value={team[t.key]} onChange={(e) => setTeam((v) => ({ ...v, [t.key]: e.target.value }))}>
                   <option value="">Not assigned</option>

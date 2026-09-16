@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { recordApi } from '@/lib/api/endpoints/clinical'
+import { recordApiFor, type ConsultKind } from '@/lib/api/endpoints/clinical'
+import { followUpsApi } from '@/lib/api/endpoints/records'
 import { toApiError } from '@/lib/api/http'
 import type { ClinicalComponent, ClinicalNote, ConsultationRecord, InvestigationItem, PrescriptionItem } from '@/lib/api/types'
 import { useAuth } from '@/lib/auth/AuthProvider'
@@ -16,17 +17,21 @@ import { useToast } from '@/components/ui/Toast'
 
 const WAIVE_MIN = 10
 
-function useRecord(consultationId: string) {
-  return useQuery({ queryKey: ['consult-record', consultationId], queryFn: () => recordApi.record(consultationId) })
+const KindContext = createContext<ConsultKind>('fnph')
+const useRecordApi = () => recordApiFor(useContext(KindContext))
+
+function useRecord(consultationId: string, kind: ConsultKind) {
+  return useQuery({ queryKey: ['consult-record', consultationId], queryFn: () => recordApiFor(kind).record(consultationId) })
 }
 
 /* ------------------------------ Note ------------------------------ */
 
 function NoteSection({ consultationId }: { consultationId: string }) {
+  const rec = useRecordApi()
   const qc = useQueryClient()
   const toast = useToast()
   const { can } = useAuth()
-  const history = useQuery({ queryKey: ['note-history', consultationId], queryFn: () => recordApi.history(consultationId) })
+  const history = useQuery({ queryKey: ['note-history', consultationId], queryFn: () => rec.history(consultationId) })
   const current: ClinicalNote | undefined = history.data?.find((n) => !n.supersededAt) ?? history.data?.[history.data.length - 1]
   const [draft, setDraft] = useState('')
   const [dirty, setDirty] = useState(false)
@@ -52,7 +57,7 @@ function NoteSection({ consultationId }: { consultationId: string }) {
     setSaving(true)
     setError(null)
     try {
-      await recordApi.save(consultationId, draft)
+      await rec.save(consultationId, draft)
       setDirty(false)
       await refresh()
       toast('Note saved.')
@@ -153,6 +158,7 @@ function NoteSection({ consultationId }: { consultationId: string }) {
 }
 
 function SignDialog({ consultationId, onClose, onSigned }: { consultationId: string; onClose: () => void; onSigned: () => void }) {
+  const rec = useRecordApi()
   const [recommendation, setRecommendation] = useState('')
   const [timeline, setTimeline] = useState('')
   const [busy, setBusy] = useState(false)
@@ -175,7 +181,7 @@ function SignDialog({ consultationId, onClose, onSigned }: { consultationId: str
               setBusy(true)
               setError(null)
               try {
-                await recordApi.sign(consultationId, { followUpRecommendation: recommendation.trim() || undefined, followUpTimeline: timeline.trim() || undefined })
+                await rec.sign(consultationId, { followUpRecommendation: recommendation.trim() || undefined, followUpTimeline: timeline.trim() || undefined })
                 onSigned()
               } catch (err) {
                 setError(toApiError(err).message)
@@ -196,6 +202,7 @@ function SignDialog({ consultationId, onClose, onSigned }: { consultationId: str
 }
 
 function AmendDialog({ consultationId, current, onClose, onAmended }: { consultationId: string; current: string; onClose: () => void; onAmended: () => void }) {
+  const rec = useRecordApi()
   const [text, setText] = useState(current)
   const unchanged = text.trim() === current.trim()
   return (
@@ -209,7 +216,7 @@ function AmendDialog({ consultationId, current, onClose, onAmended }: { consulta
       onClose={onClose}
       onConfirm={async (reason) => {
         if (unchanged) throw new Error('The amended text is the same as the signed note.')
-        await recordApi.amend(consultationId, { clinicalNote: text, amendmentReason: reason })
+        await rec.amend(consultationId, { clinicalNote: text, amendmentReason: reason })
         onAmended()
       }}
     >
@@ -225,6 +232,7 @@ function componentState(record: ConsultationRecord | undefined, type: ClinicalCo
 }
 
 function Waive({ consultationId, component, label, onDone }: { consultationId: string; component: ClinicalComponent; label: string; onDone: () => void }) {
+  const rec = useRecordApi()
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -239,7 +247,7 @@ function Waive({ consultationId, component, label, onDone }: { consultationId: s
           min={WAIVE_MIN}
           onClose={() => setOpen(false)}
           onConfirm={async (reason) => {
-            await recordApi.notRequired(consultationId, component, reason)
+            await rec.notRequired(consultationId, component, reason)
             setOpen(false)
             onDone()
           }}
@@ -286,6 +294,7 @@ const cleanRx = (items: PrescriptionItem[]) =>
   items.map((i) => ({ medication: i.medication.trim(), strength: i.strength.trim(), frequency: i.frequency.trim(), duration: i.duration.trim(), instructions: i.instructions?.trim() || undefined }))
 
 function PrescriptionSection({ consultationId, record, onChanged }: { consultationId: string; record?: ConsultationRecord; onChanged: () => void }) {
+  const rec = useRecordApi()
   const toast = useToast()
   const { can } = useAuth()
   const [items, setItems] = useState<PrescriptionItem[]>([{ ...EMPTY_RX }])
@@ -300,7 +309,7 @@ function PrescriptionSection({ consultationId, record, onChanged }: { consultati
     setBusy(true)
     setError(null)
     try {
-      const doc = await recordApi.issuePrescription(consultationId, { clinicalInformation: info.trim() || undefined, items: cleanRx(items) })
+      const doc = await rec.issuePrescription(consultationId, { clinicalInformation: info.trim() || undefined, items: cleanRx(items) })
       toast(`Prescription ${doc.issueNumber ?? ''} issued for pharmacy review.`)
       setItems([{ ...EMPTY_RX }])
       setInfo('')
@@ -360,6 +369,7 @@ function PrescriptionSection({ consultationId, record, onChanged }: { consultati
 }
 
 function SupersedeDialog({ consultationId, prescriptionId, onClose, onDone }: { consultationId: string; prescriptionId: string; onClose: () => void; onDone: () => void }) {
+  const rec = useRecordApi()
   const [items, setItems] = useState<PrescriptionItem[]>([{ ...EMPTY_RX }])
   const [info, setInfo] = useState('')
   return (
@@ -373,7 +383,7 @@ function SupersedeDialog({ consultationId, prescriptionId, onClose, onDone }: { 
       onClose={onClose}
       onConfirm={async (reason) => {
         if (!rxValid(items)) throw new Error('Complete every medicine line first.')
-        await recordApi.supersedePrescription(consultationId, prescriptionId, { reason, clinicalInformation: info.trim() || undefined, items: cleanRx(items) })
+        await rec.supersedePrescription(consultationId, prescriptionId, { reason, clinicalInformation: info.trim() || undefined, items: cleanRx(items) })
         onDone()
       }}
     >
@@ -384,6 +394,7 @@ function SupersedeDialog({ consultationId, prescriptionId, onClose, onDone }: { 
 }
 
 function InvestigationSection({ consultationId, record, onChanged }: { consultationId: string; record?: ConsultationRecord; onChanged: () => void }) {
+  const rec = useRecordApi()
   const toast = useToast()
   const { can } = useAuth()
   const [items, setItems] = useState<InvestigationItem[]>([{ panelName: '', panelCode: '', notes: '' }])
@@ -438,7 +449,7 @@ function InvestigationSection({ consultationId, record, onChanged }: { consultat
                 setBusy(true)
                 setError(null)
                 try {
-                  const doc = await recordApi.issueInvestigation(consultationId, {
+                  const doc = await rec.issueInvestigation(consultationId, {
                     clinicalInformation: info.trim() || undefined,
                     items: items.map((i) => ({ panelName: i.panelName.trim(), panelCode: i.panelCode?.trim() || undefined, notes: i.notes?.trim() || undefined })),
                   })
@@ -464,6 +475,7 @@ function InvestigationSection({ consultationId, record, onChanged }: { consultat
 }
 
 function FollowUpSection({ consultationId, record, onChanged }: { consultationId: string; record?: ConsultationRecord; onChanged: () => void }) {
+  const rec = useRecordApi()
   const toast = useToast()
   const { can } = useAuth()
   const [recommendation, setRecommendation] = useState('')
@@ -481,9 +493,7 @@ function FollowUpSection({ consultationId, record, onChanged }: { consultationId
       ) : done.length > 0 ? (
         <ul className="space-y-2 text-sm">
           {done.map((f) => (
-            <li key={f.publicId} className="rounded-[12px] border border-line px-3 py-2">
-              {f.recommendation} {f.reviewInterval && <span className="text-muted">({f.reviewInterval})</span>}
-            </li>
+            <FollowUpItem key={f.publicId} id={f.publicId} recommendation={f.recommendation} interval={f.reviewInterval} />
           ))}
         </ul>
       ) : can('follow_up.write') ? (
@@ -503,7 +513,7 @@ function FollowUpSection({ consultationId, record, onChanged }: { consultationId
                 setBusy(true)
                 setError(null)
                 try {
-                  await recordApi.followUp(consultationId, { recommendation: recommendation.trim(), reviewInterval: interval.trim() || undefined, preferredDate: date || undefined })
+                  await rec.followUp(consultationId, { recommendation: recommendation.trim(), reviewInterval: interval.trim() || undefined, preferredDate: date || undefined })
                   toast('Follow-up recorded.')
                   onChanged()
                 } catch (err) {
@@ -525,6 +535,18 @@ function FollowUpSection({ consultationId, record, onChanged }: { consultationId
   )
 }
 
+function FollowUpItem({ id, recommendation, interval }: { id: string; recommendation: string; interval?: string }) {
+  const [open, setOpen] = useState(false)
+  const detail = useQuery({ queryKey: ['follow-up', id], queryFn: () => followUpsApi.get(id), enabled: open })
+  return (
+    <li className="rounded-[12px] border border-line px-3 py-2">
+      {recommendation} {interval && <span className="text-muted">({interval})</span>}
+      <button type="button" className="ml-2 text-xs font-bold text-accent" onClick={() => setOpen((v) => !v)}>{open ? 'Hide' : 'As issued'}</button>
+      {open && <p className="mt-1 text-xs text-muted">{detail.isLoading ? 'Loading' : detail.data ? `Issued text: ${detail.data.recommendation}. Review interval: ${detail.data.reviewInterval === 'null' ? 'not set' : detail.data.reviewInterval}.` : toApiError(detail.error).message}</p>}
+    </li>
+  )
+}
+
 function ComponentBadge({ state, issued }: { state?: ConsultationRecord['components'][number]; issued: boolean }) {
   if (state?.notRequired) return <Badge>Not needed</Badge>
   if (state?.complete) return <Badge tone="green">Complete</Badge>
@@ -532,13 +554,14 @@ function ComponentBadge({ state, issued }: { state?: ConsultationRecord['compone
   return <Badge tone="gold">Outstanding</Badge>
 }
 
-export function ClinicalPanel({ consultationId }: { consultationId: string }) {
+export function ClinicalPanel({ consultationId, kind = 'fnph' }: { consultationId: string; kind?: ConsultKind }) {
   const qc = useQueryClient()
-  const record = useRecord(consultationId)
+  const record = useRecord(consultationId, kind)
   const refresh = () => void qc.invalidateQueries({ queryKey: ['consult-record', consultationId] })
   const outstanding = (record.data?.components ?? []).filter((c) => !c.settled).map((c) => humanise(c.componentType))
 
   return (
+    <KindContext.Provider value={kind}>
     <div className="space-y-5">
       {record.isError && <ErrorState error={record.error} onRetry={() => record.refetch()} />}
       {record.data && (
@@ -555,5 +578,6 @@ export function ClinicalPanel({ consultationId }: { consultationId: string }) {
       <InvestigationSection consultationId={consultationId} record={record.data} onChanged={refresh} />
       <FollowUpSection consultationId={consultationId} record={record.data} onChanged={refresh} />
     </div>
+    </KindContext.Provider>
   )
 }

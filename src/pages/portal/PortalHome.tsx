@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { bookingApi, documentsApi, paymentApi } from '@/lib/api/endpoints/patient'
+import { patientRecordsApi, triageHistoryApi } from '@/lib/api/endpoints/records'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { formatDateTime, formatLongDate, formatNaira, formatPhone, parseServerTime } from '@/lib/format'
 import { usePublicSettings } from '@/lib/hooks/usePublicSettings'
@@ -17,6 +18,9 @@ export function PortalHome() {
   const appointments = useQuery({ queryKey: ['my-appointments'], queryFn: bookingApi.mine })
   const documents = useQuery({ queryKey: ['my-documents'], queryFn: documentsApi.mine })
   const credit = useQuery({ queryKey: ['my-credit'], queryFn: paymentApi.credit })
+  const record = useQuery({ queryKey: ['my-record'], queryFn: patientRecordsApi.me })
+  const safety = useQuery({ queryKey: ['my-triage'], queryFn: triageHistoryApi.mine })
+  const lastCheck = safety.data?.[0]
 
   const now = useNow(60_000)
   const next = (appointments.data ?? [])
@@ -58,6 +62,25 @@ export function PortalHome() {
             <p className="text-sm text-muted">{documents.isLoading ? 'Checking' : ready ? `${ready} ready for you.` : 'Prescriptions and requests appear here after the hospital releases them.'}</p>
             <Link to="/portal/documents" className="btn btn-secondary btn-sm mt-3 no-underline">Open documents</Link>
           </Panel>
+          {record.data && (
+            <Panel title="Your hospital record">
+              <dl className="space-y-1 text-sm">
+                <div className="flex justify-between gap-2"><dt className="text-muted">Hospital number</dt><dd className="font-bold">{record.data.ehrNumber}</dd></div>
+                <div className="flex justify-between gap-2"><dt className="text-muted">Phone on file</dt><dd>{record.data.phoneNumber ? formatPhone(record.data.phoneNumber) : 'None'}</dd></div>
+                <div className="flex justify-between gap-2"><dt className="text-muted">Email on file</dt><dd className="truncate">{record.data.email ?? 'None'}</dd></div>
+              </dl>
+              <p className="mt-2 text-xs text-muted">Wrong details? Tell the hospital through Get help. They are changed on the hospital record, not here.</p>
+            </Panel>
+          )}
+          {lastCheck && (
+            <Panel title="Last safety check">
+              <p className="text-sm">
+                {formatDateTime(lastCheck.submittedAt)}:{' '}
+                {lastCheck.outcome === 'PROCEED' ? <strong className="text-forest">safe to book</strong> : <strong className="text-alarm-700">not suitable for video at that time</strong>}
+              </p>
+              <p className="mt-1 text-xs text-muted">You answer the questions again each time you book.</p>
+            </Panel>
+          )}
           {credit.data && Number(credit.data.balance) > 0 && (
             <Panel title="Credit">
               <p className="font-display text-2xl font-extrabold">{formatNaira(credit.data.balance)}</p>

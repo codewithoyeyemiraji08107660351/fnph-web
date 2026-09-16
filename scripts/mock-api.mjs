@@ -12,30 +12,24 @@ import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import { extname, join, resolve } from 'node:path'
 import { handlePhase2, MOCK_ROOM_HTML } from './mock-phase2.mjs'
+import { handlePhase3 } from './mock-phase3.mjs'
+import { GRANTS } from './mock-grants.mjs'
+import { handlePhase5 } from './mock-phase5.mjs'
 
 const PORT = Number(process.env.PORT || 4173)
 const DIST = resolve(process.cwd(), 'dist')
 const now = () => new Date().toISOString()
 const ago = (min) => new Date(Date.now() - min * 60000).toISOString()
 
-const ADMIN_PERMS = ['user.read', 'user.create', 'user.update', 'user.deactivate', 'user.reset_password', 'role.read', 'role.assign', 'session.revoke', 'mfa.reset', 'supervision.view_as', 'supervision.read_log', 'audit.read', 'audit.export', 'config.read', 'config.update', 'system.health_read', 'centre.read', 'notification.read_own', 'profile.read_own']
-// Copied from the V5 role grants.
-const GRANTS = {
-  PATIENT: 'appointment.cancel appointment.read_own appointment.request appointment.reschedule consent.accept consultation.join_as_patient document.download document.read_own follow_up.read_own investigation.read_own notification.read_own patient.read_own payment.initiate payment.read_own prescription.read_own profile.read_own profile.update_own schedule.read slot.hold slot.read ticket.create ticket.read_own triage.submit upload.create vitals.submit',
-  DOCTOR: 'appointment.read centre_patient.read centre_referral.read clinical_note.read clinical_note.sign clinical_note.write consent.read consultation.join_as_doctor consultation.read consultation.switch_modality consultation.terminate doctor_availability.read document.read follow_up.read follow_up.write investigation.read investigation.write notification.read_own patient.read prescription.read prescription.write profile.read_own profile.update_own recording.start review.read schedule.read ticket.create ticket.read_own triage.read upload.read vitals.read',
-  HUB_COORDINATOR: 'appointment.approve appointment.assign_doctor appointment.assign_room appointment.assign_team appointment.cancel appointment.mark_no_show appointment.read appointment.reject appointment.reschedule centre.read centre_patient.read centre_referral.read clinical_note.read consent.read consultation.read doctor_availability.manage doctor_availability.read document.read ehr_verification.resolve follow_up.read investigation.read notification.read_own notification.send patient.read patient.verify prescription.read profile.read_own profile.update_own release_bundle.read release_bundle.release review.read room.read schedule.publish schedule.read slot.read ticket.create ticket.read_own triage.read upload.read vitals.read',
-  NURSING: 'appointment.assign_room appointment.read notification.read_own patient.read profile.read_own profile.update_own queue.nursing room.read ticket.create ticket.read_own vitals.read vitals.verify',
-  HIM: 'appointment.read document.read ehr_import.read ehr_verification.resolve notification.read_own patient.flag_drift patient.read patient.verify profile.read_own profile.update_own queue.him ticket.create ticket.read_own',
-  PHARMACIST: 'appointment.read centre_patient.read document.read notification.read_own patient.read prescription.read profile.read_own profile.update_own review.pharmacy review.read review.submit_to_hub ticket.create ticket.read_own upload.read vitals.read',
-  LABORATORY_TECHNICIAN: 'appointment.read centre_patient.read document.read investigation.read notification.read_own patient.read profile.read_own profile.update_own review.laboratory review.read review.submit_to_hub ticket.create ticket.read_own upload.read vitals.read',
-}
-const ROUTE = { PATIENT: '/portal', DOCTOR: '/clinical', HUB_COORDINATOR: '/hub', NURSING: '/queues/nursing', HIM: '/queues/him', PHARMACIST: '/reviews/pharmacy', LABORATORY_TECHNICIAN: '/reviews/laboratory' }
+const ADMIN_PERMS = GRANTS.CENTRAL_ADMINISTRATOR.split(' ')
+const ROUTE = { CENTRE_HUB_COORDINATOR: '/centre', CENTRE_PHARMACY: '/centre/pharmacy', FINANCE: '/finance', ICT_SUPPORT: '/ict', HELPDESK: '/helpdesk', PATIENT: '/portal', DOCTOR: '/clinical', HUB_COORDINATOR: '/hub', NURSING: '/queues/nursing', HIM: '/queues/him', PHARMACIST: '/reviews/pharmacy', LABORATORY_TECHNICIAN: '/reviews/laboratory' }
 const staff = (publicId, username, displayName, role, extra = {}) => ({
-  publicId, username, displayName, scope: role === 'PATIENT' ? 'PATIENT' : 'FNPH', primaryRole: role, dashboardRoute: ROUTE[role], roles: [role],
+  publicId, username, displayName, scope: role === 'PATIENT' ? 'PATIENT' : role.startsWith('CENTRE_') ? 'CENTRE' : 'FNPH', primaryRole: role, dashboardRoute: ROUTE[role], roles: [role],
   permissions: GRANTS[role].split(' '), mfaEnabled: role !== 'PATIENT', mustChangePassword: false, ...extra,
 })
 const accounts = {
   admin: { publicId: 'U-ADMIN', username: 'admin', displayName: 'Amina Yusuf', scope: 'FNPH', primaryRole: 'CENTRAL_ADMINISTRATOR', dashboardRoute: '/admin', roles: ['CENTRAL_ADMINISTRATOR'], permissions: ADMIN_PERMS, mfaEnabled: false, mustChangePassword: false },
+  ops: { publicId: 'U-OPS', username: 'ops', displayName: 'Tunde Adebayo', scope: 'FNPH', primaryRole: 'CENTRAL_ADMINISTRATOR', dashboardRoute: '/admin', roles: ['CENTRAL_ADMINISTRATOR'], permissions: ADMIN_PERMS, mfaEnabled: true, mustChangePassword: false },
   doctor: staff('U-DOC', 'doctor', 'Ibrahim Bello', 'DOCTOR'),
   hub: staff('U-HUB', 'hub', 'Hauwa Musa', 'HUB_COORDINATOR'),
   nurse: staff('U-NUR', 'nurse', 'Ruth Gambo', 'NURSING', { mustChangePassword: true }),
@@ -43,6 +37,12 @@ const accounts = {
   him: staff('U-HIM', 'him', 'Musa Danladi', 'HIM'),
   pharm: staff('U-PH', 'pharm', 'Chidi Okafor', 'PHARMACIST'),
   lab: staff('U-LAB', 'lab', 'Zainab Idris', 'LABORATORY_TECHNICIAN'),
+  centre: staff('U-CEN', 'centre', 'Halima Yusuf', 'CENTRE_HUB_COORDINATOR', { centreId: 'C-KDN', centreName: 'Kaduna North Centre' }),
+  zaria: staff('U-ZAR', 'zaria', 'Bello Sani', 'CENTRE_HUB_COORDINATOR', { centreId: 'C-ZAR', centreName: 'Zaria Centre' }),
+  cpharm: staff('U-CPH', 'cpharm', 'Ngozi Eze', 'CENTRE_PHARMACY', { centreId: 'C-KDN', centreName: 'Kaduna North Centre' }),
+  finance: staff('U-FIN', 'finance', 'Emeka Obi', 'FINANCE'),
+  ict: staff('U-ICT', 'ict', 'Yakubu Dogo', 'ICT_SUPPORT'),
+  helpdesk: staff('U-HD', 'helpdesk', 'Blessing Audu', 'HELPDESK'),
   '204815': staff('U-PT', '204815', 'Fatima Sani', 'PATIENT', { patientId: 'P-1' }),
 }
 const tokens = new Map()
@@ -142,9 +142,16 @@ async function api(req, res, url) {
 
   const viewAs = req.headers['x-view-as-session']
   const acting = viewAs && supervision && supervision.publicId === viewAs
-    ? { ...me, permissions: [...me.permissions, ...supervision.availablePermissions] }
+    ? { ...me, publicId: supervision.targetUserPublicId, permissions: [...me.permissions, ...supervision.availablePermissions] }
     : me
-  if (handlePhase2({ req, res, url, path, m, me: acting, body, send, err })) return
+  if (handlePhase5({ req, res, url, path, m, me: acting, body, send, err })) return
+  if (handlePhase3({ req, res, url, path, m, me: acting, body, send, err, users })) return
+  // Centre consultations reuse the FNPH room and record handlers.
+  const p2path = path
+    .replace(/^\/centre-consultations\/([^/]+)\/join\/doctor$/, '/consultations/$1/join/doctor')
+    .replace(/^\/centre-consultations\/([^/]+)\/(identity-confirmed|modality|terminate)$/, '/consultations/$1/$2')
+    .replace(/^\/clinical\/centre-consultations\//, '/clinical/consultations/')
+  if (handlePhase2({ req, res, url, path: p2path, m, me: acting, body, send, err })) return
   if (!me.roles.includes('CENTRAL_ADMINISTRATOR')) return err(res, 403, 'Your account does not have access to this.')
   if (path === '/system/health') return send(res, 200, { checkedAt: now(), activeStaffAccounts: users.length, enrolmentAvailable: true })
   if (path === '/admin/users' && m === 'GET') {
@@ -176,7 +183,7 @@ async function api(req, res, url) {
   if (path === '/admin/supervision' && m === 'POST') {
     const u = users.find((x) => x.publicId === body.targetUserPublicId)
     const r = roles.find((x) => x.code === u.roles[0])
-    supervision = { publicId: `V-${seq++}`, targetUserPublicId: u.publicId, targetUsername: u.username, targetFullName: u.fullName, targetRole: r.code, dashboardRoute: r.dashboardRoute, reason: body.reason, startedAt: now(), expiresAt: new Date(Date.now() + 30 * 60000).toISOString(), actionsPerformed: 0, availablePermissions: (GRANTS[r.code] ?? '').split(' ').filter(Boolean) }
+    supervision = { publicId: `V-${seq++}`, targetUserPublicId: u.publicId, targetUsername: u.username, targetFullName: u.fullName, targetRole: r.code, dashboardRoute: r.dashboardRoute, reason: body.reason, startedAt: now(), expiresAt: new Date(Date.now() + 30 * 60000).toISOString(), actionsPerformed: 0, availablePermissions: (GRANTS[r.code] ?? '').split(' ').filter((p) => p && p !== 'document.download' && /(\.read\w*|^queue\.\w+|^review\.(pharmacy|laboratory))$/.test(p)) }
     return send(res, 201, supervision)
   }
   if (path.startsWith('/admin/supervision/')) { supervision = null; return send(res, 204) }

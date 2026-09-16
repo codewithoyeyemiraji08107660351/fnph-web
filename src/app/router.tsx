@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+import { TicketLink } from '@/components/layout/TicketLink'
 import { RouteError } from '@/components/layout/RouteError'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { AppShell } from '@/components/layout/AppShell'
@@ -36,6 +37,37 @@ import {
   ReviewQueries,
   ReviewQueue,
   WorkQueue,
+  CentreHome,
+  CentrePatients,
+  CentrePatientDetail,
+  CentreReferrals,
+  CentreConsultations,
+  CentreIncoming,
+  CentreRoom,
+  CapabilityWorkspace,
+  CentreApprovals,
+  Schedules,
+  Rooms,
+  Rota,
+  AdminCentres,
+  AdminNotifications,
+  FinanceOverview,
+  Wallets,
+  Payments,
+  Reconciliation,
+  Reports,
+  EhrImports,
+  VerificationQueue,
+  Quarantine,
+  SupportQueue,
+  MySupport,
+  Versions,
+  DocumentsAdmin,
+  HubToday,
+  Cancellations,
+  PatientRecords,
+  Drift,
+  PendingCodes,
 } from './phase2Pages'
 
 // Holding routes for workspaces whose phase has not shipped. One route per
@@ -71,6 +103,8 @@ const workspace = (roles: string[], children: Parameters<typeof createBrowserRou
   children,
 })
 
+const CENTRE_ROLES = ['CENTRE_HUB_COORDINATOR', 'CENTRE_ASSISTANT_COORDINATOR', 'CENTRE_PHARMACY', 'CENTRE_LABORATORY', 'CENTRE_HIM']
+
 const phase2Routes = [
   workspace(['PATIENT'], [
     { index: true, element: <PortalHome /> },
@@ -90,18 +124,78 @@ const phase2Routes = [
     { path: 'releases', element: gated('release_bundle.read', <ReleaseDesk />) },
     { path: 'releases/:bundleId', element: gated('release_bundle.read', <ReleaseBundleView />) },
     { path: 'queries', element: gated('review.read', <ReviewQueries />) },
+    { path: 'centre-approvals', element: gated('appointment.read', <CentreApprovals />) },
+    { path: 'centre-approvals/:appointmentId', element: gated('appointment.read', <CentreApprovals />) },
+    { path: 'today', element: gated('appointment.read', <HubToday />) },
+    { path: 'cancellations', element: gated('appointment.read', <Cancellations />) },
+    { path: 'cancellations/:requestId', element: gated('appointment.read', <Cancellations />) },
+    { path: 'patients', element: gated('patient.read', <PatientRecords />) },
+    { path: 'codes', element: gated('enrolment.release_code', <PendingCodes />) },
+    { path: 'documents', element: gated('document.read', <DocumentsAdmin />) },
     { path: '*', element: <Navigate to="/hub" replace /> },
   ], 'hub'),
   workspace(['DOCTOR'], [
-    { index: true, element: gated('consultation.join_as_doctor', <DoctorWorklist />) },
+    { index: true, element: gated('consultation.read', <DoctorWorklist />) },
     { path: 'appointments/:appointmentId', element: gated('consultation.join_as_doctor', <DoctorRoom />) },
     { path: 'consultations/:consultationId', element: gated('clinical_note.read', <ConsultationRecordPage />) },
+    { path: 'centre/:appointmentId', element: gated('consultation.join_as_doctor', <DoctorRoom kind="centre" />) },
+    { path: 'centre-consultations/:consultationId', element: gated('clinical_note.read', <ConsultationRecordPage kind="centre" />) },
     { path: '*', element: <Navigate to="/clinical" replace /> },
   ], 'clinical'),
-  workspace(['PHARMACIST'], [{ index: true, element: gated('review.pharmacy', <ReviewQueue kind="pharmacy" />) }], 'reviews/pharmacy'),
-  workspace(['LABORATORY_TECHNICIAN'], [{ index: true, element: gated('review.laboratory', <ReviewQueue kind="laboratory" />) }], 'reviews/laboratory'),
+  workspace(['PHARMACIST'], [
+    { index: true, element: gated('review.pharmacy', <ReviewQueue kind="pharmacy" />) },
+    { path: 'documents', element: gated('document.read', <DocumentsAdmin />) },
+  ], 'reviews/pharmacy'),
+  workspace(['LABORATORY_TECHNICIAN'], [
+    { index: true, element: gated('review.laboratory', <ReviewQueue kind="laboratory" />) },
+    { path: 'documents', element: gated('document.read', <DocumentsAdmin />) },
+  ], 'reviews/laboratory'),
   workspace(['NURSING'], [{ index: true, element: gated('queue.nursing', <WorkQueue kind="nursing" />) }], 'queues/nursing'),
-  workspace(['HIM'], [{ index: true, element: gated('queue.him', <WorkQueue kind="him" />) }], 'queues/him'),
+  workspace(['HIM'], [
+    { index: true, element: gated('queue.him', <WorkQueue kind="him" />) },
+    { path: 'verification', element: gated('ehr_verification.resolve', <VerificationQueue />) },
+    { path: 'exports', element: gated('ehr_import.read', <EhrImports />) },
+    { path: 'patients', element: gated('patient.read', <PatientRecords />) },
+    { path: 'drift', element: gated('patient.flag_drift', <Drift />) },
+    { path: 'codes', element: gated('enrolment.release_code', <PendingCodes />) },
+    { path: 'documents', element: gated('document.read', <DocumentsAdmin />) },
+  ], 'queues/him'),
+  workspace(CENTRE_ROLES, [
+    { index: true, element: gated('centre.read_own', <CentreHome />) },
+    { path: 'patients', element: gated('centre_patient.read', <CentrePatients />) },
+    { path: 'patients/:patientId', element: gated('centre_patient.read', <CentrePatientDetail />) },
+    { path: 'referrals', element: gated('centre_referral.read', <CentreReferrals />) },
+    { path: 'consultations', element: gated('centre_referral.read', <CentreConsultations />) },
+    { path: 'consultations/:appointmentId', element: gated('consultation.join_as_centre', <CentreRoom />) },
+    { path: 'incoming', element: gated('centre_bundle.read', <CentreIncoming />) },
+    { path: 'pharmacy', element: gated('centre_bundle.read', <CapabilityWorkspace capability="PHARMACY" />) },
+    { path: 'laboratory', element: gated('centre_bundle.read', <CapabilityWorkspace capability="LABORATORY" />) },
+    { path: 'him', element: gated('centre_bundle.read', <CapabilityWorkspace capability="HIM" />) },
+    { path: '*', element: <Navigate to="/centre" replace /> },
+  ], 'centre'),
+  workspace(['FINANCE'], [
+    { index: true, element: gated('finance_report.read', <FinanceOverview />) },
+    { path: 'wallets', element: gated('wallet.read_balance', <Wallets />) },
+    { path: 'payments', element: gated('payment.read', <Payments />) },
+    { path: 'reconciliation', element: gated('payment.reconcile', <Reconciliation />) },
+    { path: 'reports', element: gated('finance_report.read', <Reports />) },
+    { path: 'patients', element: gated('patient.read', <PatientRecords />) },
+    { path: '*', element: <Navigate to="/finance" replace /> },
+  ], 'finance'),
+  workspace(['ICT_SUPPORT'], [
+    { index: true, element: gated('ehr_import.read', <EhrImports />) },
+    { path: 'verification', element: gated('ehr_verification.resolve', <VerificationQueue />) },
+    { path: 'support', element: gated('ticket.read', <SupportQueue />) },
+    { path: 'quarantine', element: gated('upload.quarantine', <Quarantine />) },
+    { path: '*', element: <Navigate to="/ict" replace /> },
+  ], 'ict'),
+  workspace(['HELPDESK'], [
+    { index: true, element: gated('ticket.read', <SupportQueue />) },
+    { path: 'codes', element: gated('enrolment.release_code', <PendingCodes />) },
+  ], 'helpdesk'),
+  // Every role that can raise a ticket. Escalation notices link to /tickets/{id}.
+  { path: 'support', element: gated('ticket.create', <MySupport />) },
+  { path: 'tickets/*', element: <TicketLink /> },
 ]
 
 export const router = createBrowserRouter([
@@ -152,6 +246,21 @@ export const router = createBrowserRouter([
               { path: 'supervision', element: admin('supervision.view_as', <Supervision />) },
               { path: 'audit', element: admin('audit.read', <Audit />) },
               { path: 'configuration', element: admin('config.read', <Configuration />) },
+              { path: 'schedules', element: admin('schedule.read', <Schedules />) },
+              { path: 'rooms', element: admin('room.read', <Rooms />) },
+              { path: 'rota', element: admin('doctor_availability.read', <Rota />) },
+              { path: 'centres', element: admin('centre.read', <AdminCentres />) },
+              { path: 'exports', element: admin('ehr_import.read', <EhrImports />) },
+              { path: 'verification', element: admin('ehr_verification.resolve', <VerificationQueue />) },
+              { path: 'notifications', element: <AdminNotifications /> },
+              { path: 'support', element: admin('ticket.read', <SupportQueue />) },
+              { path: 'versions', element: admin('consent.manage_versions', <Versions />) },
+              { path: 'documents', element: admin('document.read', <DocumentsAdmin />) },
+              { path: 'appointments', element: admin('appointment.read', <HubToday />) },
+              { path: 'cancellations', element: admin('appointment.read', <Cancellations />) },
+              { path: 'patients', element: admin('patient.read', <PatientRecords />) },
+              { path: 'drift', element: admin('patient.flag_drift', <Drift />) },
+              { path: 'codes', element: admin('enrolment.release_code', <PendingCodes />) },
             ],
           },
           ...phase2Routes,

@@ -14,7 +14,15 @@ React 19, TypeScript, Vite and Tailwind 4 front end for the three portals in the
 - Doctors: worklist with pre-review vitals, the consultation room (identity confirmation first, session clock, modality changes, early termination with a safety action), and the clinical record: note draft, sign and amend, prescriptions with correction, investigations, follow-up, and explicit "not needed" for each.
 - Pharmacy and laboratory: review queue showing the document's items, forward-only submit.
 
-Still holding pages: Finance, ICT and Helpdesk (Phase 4) and the Centre of Excellence roles (Phase 3).
+**Phase 3, Centres of Excellence.** Centre overview with counts only, patients, referrals (20-character reason, consent taken and witnessed for every referral, no carry-over), time requests that FNPH decides, consultations with the join window and any reason FNPH returned a request, incoming and treated bundles, the centre room (no clock, no end control), and a plain notice where a centre does not run a service. Hub centre requests with centre rooms only and no nurse, and "return to centre" rather than rejection. Doctors get centre consultations in their worklist, room and record.
+
+**Phase 4, operations.** Scheduling (days built as drafts by default, slots, blocking, withdrawing without cancelling bookings), rooms as capacity, doctor rota, centres and capabilities, notices with an explicit send-to-everyone warning, message templates. Finance: overview, wallets with a required funding reference and replay detection, payments, a refund record that says it moves no money, reconciliation and exceptions, reports. ICT and records: EHR exports (activation absent without permission), enrolment checks, quarantined uploads. Helpdesk queue with internal notes, assignment, escalation and resolution, and "Get help" for every account.
+
+**Records, lifecycle and governance.** Consent texts and safety questions are written, reviewed and published here (placeholder wording cannot be published). Patients can move an appointment, ask to cancel it, attach results, and see their record, last safety check, recommendations and files. The hub sees appointments by day, records non-attendance once an appointment has started, and decides cancellation requests. Records staff search patients, clear export mismatches, create a record from an enrolment check, record the eligibility check and create the online account. Documents can be looked up by issue number, re-rendered when the file failed, given one more download, or withdrawn. Staff preparing a consultation see the files attached to it. Finance sees payments per patient.
+
+Every backend endpoint is called except six, on purpose: the separate download claim (the file request is the claim), the four step-by-step approval calls (one-step approval covers them), and the Remita webhook (server to server).
+
+Supervision is read-only: inside the supervised workspace, controls follow the session's permissions, and a screen that changes records says so instead of redirecting.
 
 ## Run it
 
@@ -46,6 +54,10 @@ Password `Prototype123456` for every account, authenticator code `123456`:
 | `nurse` | Nurse | Must change password first |
 | `him` | Health Information Management | |
 | `pharm`, `lab` | Pharmacist, Laboratory Technician | |
+| `ops` | Central Administrator | Already enrolled; use for Phase 4 admin screens |
+| `centre`, `zaria` | Centre Hub Coordinators | Sign in at `/centres`. Two centres, for checking isolation |
+| `cpharm` | Centre Pharmacist | Kaduna North runs pharmacy; Zaria does not |
+| `finance`, `ict`, `helpdesk` | Finance, ICT Support, Helpdesk | |
 | `204815` | Patient | Sign in at `/patients`. Answering Yes to the second safety question stops the booking |
 
 The mock walks the whole pathway: book and pay (the second "check now" confirms), approve, verify vitals, consult, review, release, download once. State resets when the mock restarts. Also try `/activate?token=demo` and `/verify/valid-demo`.

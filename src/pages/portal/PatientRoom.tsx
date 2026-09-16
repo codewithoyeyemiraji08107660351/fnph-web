@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { consultationApi } from '@/lib/api/endpoints/clinical'
 import { ConsultFrame } from '@/features/consult/ConsultFrame'
@@ -13,6 +14,13 @@ export function PatientRoom() {
   const { appointmentId = '' } = useParams()
   const { emergencyNumber } = usePublicSettings()
   const { session, error, retry } = useJoinOnce(appointmentId, () => consultationApi.joinAsPatient(appointmentId))
+  const reported = useRef(false)
+  useEffect(() => {
+    if (!session || reported.current) return
+    reported.current = true
+    const c = (navigator as Navigator & { connection?: { rtt?: number; effectiveType?: string } }).connection
+    void consultationApi.reportQuality(session.consultationPublicId, 'PATIENT', { roundTripMs: c?.rtt, videoQuality: c?.effectiveType })
+  }, [session])
 
   if (error) {
     return (
