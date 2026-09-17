@@ -1,0 +1,16 @@
+# Web app for Dokploy (Docker Compose service).
+# Builds the Dockerfile and joins Dokploy's proxy network. No published ports:
+# Dokploy's proxy serves it over HTTPS on the domain set in the Domains tab.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
