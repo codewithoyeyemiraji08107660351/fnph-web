@@ -78,9 +78,6 @@ export function Enrol() {
   const { emergencyNumber } = usePublicSettings()
   const [step, setStep] = useState<Step>('lookup')
   const [ehrNumber, setEhrNumber] = useState('')
-  const [method, setMethod] = useState<'dob' | 'phone'>('dob')
-  const [dateOfBirth, setDateOfBirth] = useState('')
-  const [phoneLastFour, setPhoneLastFour] = useState('')
   const [match, setMatch] = useState<EnrolmentLookup | null>(null)
   const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
@@ -91,18 +88,13 @@ export function Enrol() {
   const lookup = async (e: FormEvent) => {
     e.preventDefault()
     if (!ehrNumber.trim()) return setError('Enter the hospital number on your card.')
-    if (method === 'dob' ? !dateOfBirth : !/^\d{4}$/.test(phoneLastFour)) {
-      return setError(method === 'dob' ? 'Enter your date of birth.' : 'Enter the last four digits of your phone number.')
-    }
     setBusy(true)
     setError(null)
     try {
       setMatch(
-        await enrolmentApi.lookup({
-          ehrNumber: ehrNumber.trim(),
-          dateOfBirth: method === 'dob' ? dateOfBirth : undefined,
-          phoneLastFour: method === 'phone' ? phoneLastFour : undefined,
-        }),
+        // FNPH enrols by hospital number alone. The code sent to the contact on
+        // the hospital record is what proves the person is the patient.
+        await enrolmentApi.lookup({ ehrNumber: ehrNumber.trim() }),
       )
       setStep('confirm')
     } catch (err) {
@@ -117,7 +109,7 @@ export function Enrol() {
     e.preventDefault()
     if (!match) return
     if (!/^\d{6}$/.test(code.trim())) return setError('The code is six digits.')
-    const problem = passwordProblems(password, confirm, 12, [ehrNumber, ...match.fullName.split(' ')])
+    const problem = passwordProblems(password, confirm, 12, [ehrNumber, ...(match.fullName ?? '').split(' ').filter(Boolean)])
     if (problem) return setError(problem)
     setBusy(true)
     setError(null)
@@ -151,23 +143,25 @@ export function Enrol() {
       ) : step === 'confirm' && match ? (
         <form onSubmit={complete} noValidate>
           <span className="kicker">Step 2 of 2</span>
-          <h1 className="text-2xl font-extrabold">Check this is you</h1>
-          <dl className="mt-4 rounded-[14px] bg-soft p-4 text-sm">
-            <dt className="text-xs text-muted">Name on the hospital record</dt>
-            <dd className="font-display text-lg font-extrabold">{match.fullName}</dd>
-            <dd className="text-muted">Born {match.dateOfBirthMasked}. {match.clinic} clinic.</dd>
-          </dl>
-          <p className="mt-3 text-sm text-muted">
-            Not you? <button type="button" className="font-bold text-accent" onClick={() => { setMatch(null); setStep('lookup') }}>Start again</button>
-          </p>
+          <h1 className="text-2xl font-extrabold">Enter the code we sent</h1>
+          {match.fullName && (
+            <dl className="mt-4 rounded-[14px] bg-soft p-4 text-sm">
+              <dt className="text-xs text-muted">Name on the hospital record</dt>
+              <dd className="font-display text-lg font-extrabold">{match.fullName}</dd>
+              {match.dateOfBirthMasked && <dd className="text-muted">Born {match.dateOfBirthMasked}.{match.clinic ? ` ${match.clinic} clinic.` : ''}</dd>}
+            </dl>
+          )}
           <p className="mt-4 text-sm">
-            We sent a code to <strong>{match.phoneMasked}</strong>. It expires at {formatTime(match.codeExpiresAt)} WAT.
+            We sent a six-digit code to <strong>{match.phoneMasked}</strong>, the contact on your hospital record. It expires at {formatTime(match.codeExpiresAt)} WAT.
           </p>
           <p className="mt-2 text-xs text-muted">
-            These details come from the hospital record list dated {formatCalendarDate(match.recordsAsAt)}. If your number changed since then, the code went to the old one; ask for a manual check below.
+            The hospital record list is dated {formatCalendarDate(match.recordsAsAt)}. If your email or phone changed since then, the code went to the old one; ask for a manual check below.
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            Wrong number? <button type="button" className="font-bold text-accent" onClick={() => { setMatch(null); setCode(''); setStep('lookup') }}>Start again</button>
           </p>
           {error && <Alert tone="danger" className="mt-4">{error}</Alert>}
-          <TextField wrapperClassName="mt-5" label="Six-digit code from the text message" maxLength={6} inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required />
+          <TextField wrapperClassName="mt-5" label="Six-digit code" maxLength={6} inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required />
           <PasswordField wrapperClassName="mt-4" label="Choose a password" hint="At least 12 characters. A short phrase is easy to remember." autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           <PasswordField wrapperClassName="mt-4" label="Confirm password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
           <button type="submit" className="btn btn-primary mt-6 w-full" disabled={busy}>
@@ -179,29 +173,13 @@ export function Enrol() {
         <form onSubmit={lookup} noValidate>
           <span className="kicker">Existing FNPH Kaduna patients</span>
           <h1 className="text-2xl font-extrabold">Set up your account</h1>
-          <p className="mt-2 text-sm text-muted">You need the hospital number printed on your card. New patients must be seen at the hospital first.</p>
+          <p className="mt-2 text-sm text-muted">Enter the hospital number printed on your card. We send a code to the email or phone the hospital has for you. New patients must be seen at the hospital first.</p>
           {error && <Alert tone="danger" className="mt-4">{error}</Alert>}
           <TextField wrapperClassName="mt-5" label="Hospital (EHR) number" value={ehrNumber} onChange={(e) => setEhrNumber(e.target.value)} autoCapitalize="characters" spellCheck={false} required />
-          <fieldset className="mt-4">
-            <legend className="field-label">Confirm one more detail</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {(['dob', 'phone'] as const).map((m) => (
-                <label key={m} className={`flex min-h-11 cursor-pointer items-center justify-center rounded-[12px] border px-2 text-center text-sm font-bold ${method === m ? 'border-accent bg-accent-soft text-accent' : 'border-line'}`}>
-                  <input type="radio" name="method" className="sr-only" checked={method === m} onChange={() => setMethod(m)} />
-                  {m === 'dob' ? 'Date of birth' : 'Phone number'}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          {method === 'dob' ? (
-            <TextField wrapperClassName="mt-4" label="Date of birth, as the hospital recorded it" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} required />
-          ) : (
-            <TextField wrapperClassName="mt-4" label="Last four digits of your phone number" inputMode="numeric" maxLength={4} value={phoneLastFour} onChange={(e) => setPhoneLastFour(e.target.value.replace(/\D/g, '').slice(0, 4))} required />
-          )}
           <button type="submit" className="btn btn-primary mt-6 w-full" disabled={busy}>
-            {busy ? <Spinner label="Checking" inverted /> : 'Continue'}
+            {busy ? <Spinner label="Checking" inverted /> : 'Send my code'}
           </button>
-          <button type="button" className="btn btn-quiet mt-2 w-full" onClick={() => setStep('help')}>My details do not match</button>
+          <button type="button" className="btn btn-quiet mt-2 w-full" onClick={() => setStep('help')}>My number is not recognised</button>
           <p className="mt-4 text-center text-sm">
             Already set up? <Link to="/patients">Sign in</Link>
           </p>

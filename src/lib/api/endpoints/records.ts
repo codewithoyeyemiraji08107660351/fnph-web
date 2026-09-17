@@ -40,12 +40,12 @@ export interface TriageSetVersion {
 }
 
 export const versionsApi = {
-  consent: (audience: Audience) => api.get<ConsentVersion[]>('/admin/consent', { params: { audience } }),
+  consent: (audience: Audience) => api.list<ConsentVersion>('/admin/consent', { params: { audience } }),
   createConsent: (body: { audience: Audience; version: string; title: string; body: string }) => api.post<ConsentVersion>('/admin/consent', body),
   editConsent: (id: string, body: { title: string; body: string }) => api.put<ConsentVersion>(`/admin/consent/${seg(id)}`, body),
   /** Retires the published version for that audience. */
   publishConsent: (id: string) => api.post<unknown>(`/admin/consent/${seg(id)}/publish`),
-  triage: (audience: Audience) => api.get<TriageSetVersion[]>('/admin/triage', { params: { audience } }),
+  triage: (audience: Audience) => api.list<TriageSetVersion>('/admin/triage', { params: { audience } }),
   createTriage: (body: { audience: Audience; version: string; questions: TriageQuestionDraft[] }) => api.post<TriageSetVersion>('/admin/triage', body),
   publishTriage: (id: string) => api.post<unknown>(`/admin/triage/${seg(id)}/publish`),
 }
@@ -87,11 +87,11 @@ export const lifecycleApi = {
   /** Moves straight away and goes back to the hub for a new doctor and room. */
   reschedule: (appointmentId: string, newSlotPublicId: string, reason: string) =>
     api.post<{ reference: string; newTime: string; status: string }>(`/appointments/${seg(appointmentId)}/reschedule`, null, { params: { newSlotPublicId, reason } }),
-  cancellations: () => api.get<CancellationRow[]>('/appointments/cancellations'),
+  cancellations: () => api.list<CancellationRow>('/appointments/cancellations'),
   decide: (requestId: string, approve: boolean, notes?: string) =>
     api.post<void>(`/appointments/cancellations/${seg(requestId)}/decide`, null, { params: { approve, notes } }),
   noShow: (appointmentId: string, notes: string) => api.post<void>(`/appointments/${seg(appointmentId)}/no-show`, null, { params: { notes } }),
-  day: (date: string) => api.get<DayRow[]>('/appointments/day', { params: { date } }),
+  day: (date: string) => api.list<DayRow>('/appointments/day', { params: { date } }),
 }
 
 /* ---------------- patient records and manual enrolment ---------------- */
@@ -113,11 +113,11 @@ export interface PatientRecord {
 
 export const patientRecordsApi = {
   me: () => api.get<PatientRecord>('/patients/me'),
-  search: (term: string, page = 0) => api.get<PatientRecord[]>('/patients', { params: { term: term || undefined, page, size: 50 } }),
+  search: (term: string, page = 0) => api.list<PatientRecord>('/patients', { params: { term: term || undefined, page, size: 50 } }),
   get: (id: string) => api.get<PatientRecord>(`/patients/${seg(id)}`),
   update: (id: string, fields: { phoneNumber?: string; email?: string; address?: string }) => api.put<{ updated: boolean }>(`/patients/${seg(id)}`, null, { params: fields }),
   deactivate: (id: string, reason: string) => api.post<void>(`/patients/${seg(id)}/deactivate`, null, { params: { reason } }),
-  drift: (page = 0) => api.get<Array<{ publicId: string; ehrNumber: string; name: string; flaggedAt?: string; details?: string }>>('/patients/drift', { params: { page, size: 50 } }),
+  drift: (page = 0) => api.list<{ publicId: string; ehrNumber: string; name: string; flaggedAt?: string; details?: string }>('/patients/drift', { params: { page, size: 50 } }),
   clearDrift: (id: string, notes: string) => api.post<void>(`/patients/${seg(id)}/drift/clear`, null, { params: { notes } }),
   /** Closes an enrolment check that could not match. Creates an inactive record. */
   createManual: (p: { ehrNumber: string; firstName: string; lastName: string; dateOfBirth: string; phoneNumber?: string; email?: string; verificationRequestPublicId: string; verifiedHow: string }) =>
@@ -125,7 +125,7 @@ export const patientRecordsApi = {
   verify: (id: string, assessmentDetail: string) => api.post<void>(`/admin/patients/${seg(id)}/verify`, null, { params: { assessmentDetail } }),
   activate: (id: string) => api.post<{ username: string; status: string; setupLinkSent: boolean; note: string }>(`/admin/patients/${seg(id)}/activate`),
   /** Who is waiting at a desk for an enrolment code. The code itself is never returned. */
-  pendingCodes: () => api.get<Array<{ publicId: string; ehrNumber: string; destinationMasked?: string; expiresAt: string; attempts: number }>>('/admin/enrolment/pending-codes'),
+  pendingCodes: () => api.list<{ publicId: string; ehrNumber: string; destinationMasked?: string; expiresAt: string; attempts: number }>('/admin/enrolment/pending-codes'),
   financeReport: (patientPublicId: string) => api.get<FinanceReport>(`/finance/reports/patient/${seg(patientPublicId)}`),
 }
 
@@ -151,8 +151,8 @@ export const uploadsApi = {
     form.append('file', file)
     return http.post<UploadRow>('/uploads', form, { params: { category, description, referenceId }, timeout: 120_000 }).then((r) => r.data)
   },
-  mine: () => api.get<UploadRow[]>('/uploads/mine'),
-  forReference: (referenceId: string) => api.get<UploadRow[]>('/uploads', { params: { referenceId } }),
+  mine: () => api.list<UploadRow>('/uploads/mine'),
+  forReference: (referenceId: string) => api.list<UploadRow>('/uploads', { params: { referenceId } }),
   /** Always an attachment; never rendered in the page. */
   download: async (id: string) => {
     const r = await http.get<Blob>(`/uploads/${seg(id)}/content`, { responseType: 'blob', timeout: 120_000 })
@@ -199,19 +199,19 @@ export const documentsAdminApi = {
 }
 
 export const followUpsApi = {
-  mine: () => api.get<Array<{ publicId: string; recommendation: string; reviewInterval?: string; preferredDate?: string; createdAt: string }>>('/clinical/follow-ups/mine'),
+  mine: () => api.list<{ publicId: string; recommendation: string; reviewInterval?: string; preferredDate?: string; createdAt: string }>('/clinical/follow-ups/mine'),
   get: (id: string) => api.get<{ publicId: string; recommendation: string; reviewInterval: string }>(`/clinical/follow-ups/${seg(id)}`),
 }
 
 export const triageHistoryApi = {
-  mine: () => api.get<Array<{ publicId: string; version: string; outcome: string; stopReason?: string; submittedAt: string }>>('/triage/mine'),
+  mine: () => api.list<{ publicId: string; version: string; outcome: string; stopReason?: string; submittedAt: string }>('/triage/mine'),
 }
 
 export const recordingApi = {
   /** Refused while recording is switched off; the refusal is the answer to show. */
   start: (consultationId: string, consentAcceptancePublicId: string) =>
     api.post<Record<string, unknown>>(`/consultations/${seg(consultationId)}/recording/start`, null, { params: { consentAcceptancePublicId } }),
-  list: (consultationId: string) => api.get<Array<Record<string, unknown>>>(`/consultations/${seg(consultationId)}/recording`),
+  list: (consultationId: string) => api.list<Record<string, unknown>>(`/consultations/${seg(consultationId)}/recording`),
 }
 
 /** The deprecated centre join: details only, no token. Kept for completeness; the room uses join/centre. */

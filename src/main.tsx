@@ -17,7 +17,7 @@ const queryClient = new QueryClient({
       staleTime: 30_000,
       refetchOnWindowFocus: false,
       // Permission and not-found answers will not change on retry.
-      retry: (count, error) => !(error instanceof ApiError && [400, 401, 403, 404].includes(error.status)) && count < 2,
+      retry: (count, error) => !(error instanceof ApiError && (error.isContractError || [400, 401, 403, 404].includes(error.status))) && count < 2,
     },
   },
 })

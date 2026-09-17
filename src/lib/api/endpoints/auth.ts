@@ -23,7 +23,7 @@ export const authApi = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post<void>('/auth/password/change', { currentPassword, newPassword }),
   me: () => api.get<Principal>('/me'),
-  sessions: () => api.get<SessionItem[]>('/sessions'),
+  sessions: () => api.list<SessionItem>('/sessions'),
   revokeSession: (publicId: string) => api.delete<void>(`/sessions/${encodeURIComponent(publicId)}`),
   revokeAllSessions: () => api.delete<void>('/sessions'),
 }

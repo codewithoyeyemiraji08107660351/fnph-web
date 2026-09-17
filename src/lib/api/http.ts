@@ -1,4 +1,4 @@
-import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosError, type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import type { ErrorResponse, LoginResponse } from './types'
 
 const API_ROOT = `${(import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')}/api/v1`
@@ -64,6 +64,15 @@ export class ApiError extends Error {
     this.validationErrors = validationErrors
     this.isNetworkError = isNetworkError
   }
+
+  /** The request reached something that is not the API, or the answer had the wrong shape. Retrying will not help. */
+  isContractError = false
+}
+
+function contractError(message: string): ApiError {
+  const e = new ApiError(message, 502)
+  e.isContractError = true
+  return e
 }
 
 const FALLBACK_MESSAGES: Record<number, string> = {
@@ -141,8 +150,26 @@ type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean }
 // Public sign-in steps answer 401 for a wrong password, which is not an expired session.
 const PUBLIC_AUTH_CALL = /^\/auth\/(login|mfa\/|refresh|activation|logout|password\/(forgot|reset))/
 
+/*
+  A response that is a web page, not data, means the request reached the wrong
+  server: in development usually a proxy or API address pointing somewhere other
+  than the backend. Turned into a clear error instead of reaching a screen that
+  expects JSON.
+*/
+function assertData(response: AxiosResponse): AxiosResponse {
+  const type = String(response.headers['content-type'] ?? '')
+  const expectsBinary = response.config.responseType === 'blob'
+  if (!expectsBinary && (type.includes('text/html') || (typeof response.data === 'string' && /^\s*<(!doctype|html)/i.test(response.data)))) {
+    throw contractError(
+      `The service answered ${response.config.url ?? 'a request'} with a web page instead of data. ` +
+        'Check that the API address points at the backend (in development, VITE_API_PROXY_TARGET).',
+    )
+  }
+  return response
+}
+
 http.interceptors.response.use(
-  (response) => response,
+  assertData,
   async (error: AxiosError) => {
     // A blob request returns its error body as a Blob too. Decode it so the
     // server's message ("That document expired on ...") reaches the person.
@@ -160,7 +187,7 @@ http.interceptors.response.use(
       config._retried = true
       try {
         await refreshSession()
-        return http(config)
+        return assertData(await http(config))
       } catch (refreshError) {
         const apiError = toApiError(refreshError)
         if (!apiError.isNetworkError) sessionEvents.dispatchEvent(new Event(SESSION_EXPIRED))
@@ -176,8 +203,24 @@ http.interceptors.response.use(
 )
 
 /** Typed helpers that unwrap the response body. */
+/**
+  A list, whatever envelope it arrives in: a plain array, or a Spring page
+  ({ content: [...] }). Anything else is a contract mismatch, reported with
+  the endpoint instead of crashing the screen that renders it.
+*/
+export function asList<T>(data: unknown, url: string): T[] {
+  if (Array.isArray(data)) return data as T[]
+  if (data && typeof data === 'object' && Array.isArray((data as { content?: unknown }).content)) {
+    return (data as { content: T[] }).content
+  }
+  if (data === '' || data === null || data === undefined) return []
+  throw contractError(`The service returned an unexpected answer for ${url}. Expected a list.`)
+}
+
 export const api = {
   get: <T>(url: string, config?: AxiosRequestConfig) => http.get<T>(url, config).then((r) => r.data),
+  /** A GET that must return a list. */
+  list: <T>(url: string, config?: AxiosRequestConfig) => http.get<unknown>(url, config).then((r) => asList<T>(r.data, url)),
   post: <T>(url: string, body?: unknown, config?: AxiosRequestConfig) => http.post<T>(url, body, config).then((r) => r.data),
   put: <T>(url: string, body?: unknown, config?: AxiosRequestConfig) => http.put<T>(url, body, config).then((r) => r.data),
   delete: <T>(url: string, config?: AxiosRequestConfig) => http.delete<T>(url, config).then((r) => r.data),

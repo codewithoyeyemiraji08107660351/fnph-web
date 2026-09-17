@@ -4,7 +4,7 @@ import { adminApi } from '@/lib/api/endpoints/admin'
 import { accountApi } from '@/lib/api/endpoints/account'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { formatDateTime, formatLongDate, formatNaira, formatPhone, formatRelative, humanise, settingLabel } from '@/lib/format'
-import { PageHeader, Panel, Stat } from '@/components/ui/Page'
+import { ErrorState, PageHeader, Panel, Stat } from '@/components/ui/Page'
 import { Spinner } from '@/components/ui/Spinner'
 import { Badge } from '@/components/ui/Badge'
 
@@ -59,9 +59,9 @@ export function Overview() {
         <Panel title="Recent activity" action={can('audit.read') && <Link to="/admin/audit" className="text-sm font-bold">Open audit log</Link>} bodyClassName="">
           {recent.isLoading && <div className="p-5"><Spinner label="Loading activity" /></div>}
           {recent.isError && <p className="p-5 text-sm text-alarm">Recent activity could not be loaded.</p>}
-          {recent.data?.content.length === 0 && <p className="p-5 text-sm text-muted">No activity in the last 30 days.</p>}
+          {recent.data && (recent.data.content ?? []).length === 0 && <p className="p-5 text-sm text-muted">No activity in the last 30 days.</p>}
           <ul className="divide-y divide-line">
-            {recent.data?.content.map((e) => (
+            {(recent.data?.content ?? []).map((e) => (
               <li key={e.publicId} className="flex items-start justify-between gap-3 px-5 py-3 text-sm">
                 <div className="min-w-0">
                   <p className="font-bold">{humanise(e.action)}</p>
@@ -80,6 +80,7 @@ export function Overview() {
 
         <Panel title="Key settings" action={can('config.read') && <Link to="/admin/configuration" className="text-sm font-bold">Configure</Link>}>
           {config.isLoading && <Spinner label="Loading settings" />}
+          {config.isError && <ErrorState error={config.error} onRetry={() => config.refetch()} />}
           <dl className="divide-y divide-line">
             {highlights.map((c) => (
               <div key={c.key} className="flex items-center justify-between gap-3 py-2.5 text-sm first:pt-0 last:pb-0">
@@ -91,11 +92,15 @@ export function Overview() {
         </Panel>
       </div>
 
-      <Panel title="Coming with the next phases" className="mt-5">
-        <p className="text-sm text-muted">
-          Live consultations, booking approvals, payment success, centre referrals and helpdesk load appear here once the Phase 2 and Phase 3 workspaces go live. They read from endpoints that already exist on the server.
-        </p>
-        {health.data && <p className="mt-2 text-xs text-muted">Health last checked {formatDateTime(health.data.checkedAt as string)}.</p>}
+      <Panel title="Where the work is" className="mt-5">
+        <div className="flex flex-wrap gap-2">
+          {can('appointment.read') && <Link to="/admin/appointments" className="btn btn-secondary btn-sm no-underline">Appointments by day</Link>}
+          {can('appointment.read') && <Link to="/admin/cancellations" className="btn btn-secondary btn-sm no-underline">Cancellation requests</Link>}
+          {can('ehr_verification.resolve') && <Link to="/admin/verification" className="btn btn-secondary btn-sm no-underline">Enrolment checks</Link>}
+          {can('ticket.read') && <Link to="/admin/support" className="btn btn-secondary btn-sm no-underline">Support queue</Link>}
+          {can('consent.manage_versions') && <Link to="/admin/versions" className="btn btn-secondary btn-sm no-underline">Consent and safety questions</Link>}
+        </div>
+        {health.data && <p className="mt-3 text-xs text-muted">Health last checked {formatDateTime(health.data.checkedAt as string)}.</p>}
       </Panel>
     </>
   )

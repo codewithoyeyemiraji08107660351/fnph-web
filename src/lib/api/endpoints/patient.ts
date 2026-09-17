@@ -43,11 +43,11 @@ export const carePathApi = {
 }
 
 export const bookingApi = {
-  times: (date: string) => api.get<AvailableTime[]>('/booking/times', { params: { date } }),
+  times: (date: string) => api.list<AvailableTime>('/booking/times', { params: { date } }),
   /** 409 when the time went. The appointment may be on another room at the same time. */
   hold: (slotPublicId: string) => api.post<Appointment>('/booking/hold', { slotPublicId }),
-  mine: () => api.get<Appointment[]>('/booking/mine'),
-  history: (appointmentPublicId: string) => api.get<AppointmentHistory[]>(`/booking/${seg(appointmentPublicId)}/history`),
+  mine: () => api.list<Appointment>('/booking/mine'),
+  history: (appointmentPublicId: string) => api.list<AppointmentHistory>(`/booking/${seg(appointmentPublicId)}/history`),
 }
 
 export const paymentApi = {
@@ -56,7 +56,7 @@ export const paymentApi = {
     api.post<PaymentView>('/payments/initiate', null, { params: contact }),
   /** Asks Remita. A return to this page is not evidence that money moved. */
   verify: (reference: string) => api.post<PaymentView>(`/payments/${seg(reference)}/verify`),
-  mine: () => api.get<PaymentView[]>('/payments/mine'),
+  mine: () => api.list<PaymentView>('/payments/mine'),
   credit: () => api.get<CreditBalance>('/payments/credit'),
 }
 
@@ -66,7 +66,7 @@ export const patientVitalsApi = {
 }
 
 export const documentsApi = {
-  mine: () => api.get<IssuedDocument[]>('/documents/mine'),
+  mine: () => api.list<IssuedDocument>('/documents/mine'),
   /**
     The download itself. This request is the claim: the server counts it
     before sending the file, so nothing else may claim first. Never call it
@@ -85,6 +85,6 @@ export const documentsApi = {
 
 /** The patient's own prescriptions and requests, with their contents, for reading on screen. */
 export const myRecordsApi = {
-  prescriptions: () => api.get<import('../types').PrescriptionDetail[]>('/clinical/prescriptions/mine'),
-  investigations: () => api.get<import('../types').InvestigationDetail[]>('/clinical/investigations/mine'),
+  prescriptions: () => api.list<import('../types').PrescriptionDetail>('/clinical/prescriptions/mine'),
+  investigations: () => api.list<import('../types').InvestigationDetail>('/clinical/investigations/mine'),
 }

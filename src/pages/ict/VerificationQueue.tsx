@@ -88,9 +88,9 @@ export function VerificationQueue() {
       <Panel bodyClassName="">
         {list.isLoading && <div className="p-5"><Spinner /></div>}
         {list.isError && <ErrorState error={list.error} onRetry={() => list.refetch()} />}
-        {list.data?.content.length === 0 && <EmptyState icon="bi-person-check" title="Nothing waiting" />}
+        {list.data?.length === 0 && <EmptyState icon="bi-person-check" title="Nothing waiting" />}
         <ul className="divide-y divide-line">
-          {list.data?.content.map((r) => (
+          {list.data?.map((r) => (
             <li key={r.publicId} className="px-5 py-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="text-sm">

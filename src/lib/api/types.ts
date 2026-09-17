@@ -336,10 +336,12 @@ export type Money = string | number
 /** ehr/api/EnrolmentLookupResponse */
 export interface EnrolmentLookup {
   verificationPublicId: string
-  fullName: string
-  dateOfBirthMasked: string
+  /** Withheld when only an EHR number was given, so a guessed number reveals nobody. */
+  fullName?: string | null
+  dateOfBirthMasked?: string | null
+  /** Where the code went: a masked email or phone number. */
   phoneMasked: string
-  clinic: string
+  clinic?: string | null
   codeExpiresAt: IsoDateTime
   recordsAsAt: string
   recordsAgeInDays: number

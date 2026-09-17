@@ -21,16 +21,16 @@ import type {
 export type QueueKind = 'nursing' | 'him'
 
 export const workQueueApi = {
-  list: (kind: QueueKind) => api.get<WorkQueueRow[]>(`/clinical/queues/${kind}`),
+  list: (kind: QueueKind) => api.list<WorkQueueRow>(`/clinical/queues/${kind}`),
   start: (kind: QueueKind, id: string) => api.post<unknown>(`/queues/${kind}/${seg(id)}/start`),
   complete: (kind: QueueKind, id: string, notes?: string) =>
     api.post<unknown>(`/queues/${kind}/${seg(id)}/complete`, null, { params: { notes } }),
   exception: (kind: QueueKind, id: string, reason: string) =>
     api.post<unknown>(`/queues/${kind}/${seg(id)}/exception`, null, { params: { reason } }),
-  vitals: (appointmentPublicId: string) => api.get<VitalsReading[]>(`/clinical/vitals/appointments/${seg(appointmentPublicId)}`),
+  vitals: (appointmentPublicId: string) => api.list<VitalsReading>(`/clinical/vitals/appointments/${seg(appointmentPublicId)}`),
   verifyVitals: (vitalsPublicId: string) => api.post<VitalsReading>(`/clinical/vitals/${seg(vitalsPublicId)}/verify`),
-  doctorQueue: () => api.get<DoctorQueueRow[]>('/clinical/queues/doctor'),
-  centreQueue: () => api.get<CentreDoctorRow[]>('/clinical/centre-consultations/mine'),
+  doctorQueue: () => api.list<DoctorQueueRow>('/clinical/queues/doctor'),
+  centreQueue: () => api.list<CentreDoctorRow>('/clinical/centre-consultations/mine'),
 }
 
 export type ConsultKind = 'fnph' | 'centre'
@@ -63,7 +63,7 @@ export const recordApiFor = (kind: ConsultKind) => {
   return {
   summary: (consultationPublicId: string) => api.get<ConsultationSummary>(base(consultationPublicId)),
   record: (consultationPublicId: string) => api.get<ConsultationRecord>(`${base(consultationPublicId)}/record`),
-  history: (consultationPublicId: string) => api.get<ClinicalNote[]>(`${base(consultationPublicId)}/note/history`),
+  history: (consultationPublicId: string) => api.list<ClinicalNote>(`${base(consultationPublicId)}/note/history`),
   save: (consultationPublicId: string, clinicalNote: string) => api.put<ClinicalNote>(`${base(consultationPublicId)}/note`, { clinicalNote }),
   sign: (consultationPublicId: string, body: { followUpRecommendation?: string; followUpTimeline?: string }) =>
     api.post<ClinicalNote>(`${base(consultationPublicId)}/note/sign`, body),
@@ -93,7 +93,7 @@ export const reviewApi = {
     filter by type. Filtered here so each screen matches its title.
   */
   queue: async (kind: ReviewKind) => {
-    const rows = await api.get<ReviewRow[]>(`/reviews/${kind}/queue`)
+    const rows = await api.list<ReviewRow>(`/reviews/${kind}/queue`)
     const wanted = kind === 'pharmacy' ? 'PRESCRIPTION' : 'INVESTIGATION'
     return rows.filter((r) => r.documentType === wanted)
   },

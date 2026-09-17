@@ -20,20 +20,20 @@ export const approvalsApi = {
   /** Query parameter. The patient is shown this reason. */
   reject: (appointmentPublicId: string, reason: string) =>
     api.post<Appointment>(`/hub/approvals/${seg(appointmentPublicId)}/reject`, null, { params: { reason } }),
-  history: (appointmentPublicId: string) => api.get<AppointmentHistory[]>(`/hub/approvals/${seg(appointmentPublicId)}/history`),
+  history: (appointmentPublicId: string) => api.list<AppointmentHistory>(`/hub/approvals/${seg(appointmentPublicId)}/history`),
   /** Gated on appointment.assign_team. The coordinator does not hold user.read. */
-  staff: (role?: string) => api.get<StaffOption[]>('/hub/approvals/assignable-staff', { params: { role } }),
-  rooms: (type?: RoomOption['roomType']) => api.get<RoomOption[]>('/admin/rooms', { params: { type } }),
-  availability: (serviceDate: string) => api.get<DoctorAvailability[]>('/admin/availability', { params: { serviceDate } }),
+  staff: (role?: string) => api.list<StaffOption>('/hub/approvals/assignable-staff', { params: { role } }),
+  rooms: (type?: RoomOption['roomType']) => api.list<RoomOption>('/admin/rooms', { params: { type } }),
+  availability: (serviceDate: string) => api.list<DoctorAvailability>('/admin/availability', { params: { serviceDate } }),
 }
 
 export const releaseApi = {
-  desk: (status?: ReleaseDeskRow['status']) => api.get<ReleaseDeskRow[]>('/hub/releases', { params: { status } }),
+  desk: (status?: ReleaseDeskRow['status']) => api.list<ReleaseDeskRow>('/hub/releases', { params: { status } }),
   get: (bundlePublicId: string) => api.get<ReleaseBundle>(`/hub/releases/${seg(bundlePublicId)}`),
   /** All or nothing. */
   release: (bundlePublicId: string, notes?: string) =>
     api.post<ReleaseBundle>(`/hub/releases/${seg(bundlePublicId)}/release`, null, { params: { notes } }),
   block: (bundlePublicId: string, reason: string) =>
     api.post<ReleaseBundle>(`/hub/releases/${seg(bundlePublicId)}/block`, null, { params: { reason } }),
-  queries: () => api.get<ReviewRow[]>('/reviews/queries'),
+  queries: () => api.list<ReviewRow>('/reviews/queries'),
 }
