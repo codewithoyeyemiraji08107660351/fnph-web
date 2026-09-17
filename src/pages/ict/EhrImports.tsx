@@ -36,7 +36,16 @@ export function EhrImports() {
     setError(null)
     try {
       const r = await ictApi.upload(file, asAt)
-      toast(`Checked: ${r.validRowCount} of ${r.rowCount} rows valid. It is not in use until activated.`, r.rejectedRowCount ? 'info' : 'success')
+      if (r.status === 'REJECTED') {
+        toast('Not loaded: the file has no usable rows. Open its report in the list below to see why.', 'error')
+      } else {
+        toast(
+          r.rejectedRowCount
+            ? `Loaded ${r.validRowCount} of ${r.rowCount} rows; ${r.rejectedRowCount} skipped (see its report). It is not in use until activated.`
+            : `Loaded all ${r.validRowCount} rows. It is not in use until activated.`,
+          r.rejectedRowCount ? 'info' : 'success',
+        )
+      }
       setFile(null)
       if (fileRef.current) fileRef.current.value = ''
       refresh()
