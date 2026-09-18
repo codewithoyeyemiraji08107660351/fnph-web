@@ -1,0 +1,59 @@
+{
+  "sections": [
+    {
+      "title": "01 Nature of telepsychiatry",
+      "body": "Telepsychiatry provides psychiatric assessment, consultation and approved follow-up through secure digital communication. Consultations are video-first; audio may be used when video cannot be used safely or reliably. The quality of remote care depends on devices, connectivity, privacy and information available to the clinician."
+    },
+    {
+      "title": "02 Eligibility and emergency exclusions",
+      "body": "This patient service is for verified existing FNPH Kaduna patients who have already received an in-person assessment and are suitable for non-emergency remote follow-up. Psychiatric emergencies, first-time acute psychosis, severe agitation, immediate risk of harm and conditions requiring urgent physical assessment are excluded."
+    },
+    {
+      "title": "03 Voluntary participation and accurate information",
+      "body": "Participation is voluntary. You agree to provide accurate symptoms, vital signs and documents. The clinician may stop or redirect a consultation when remote care is unsafe, the setting is not private or respectful participation is not possible."
+    },
+    {
+      "title": "04 Privacy and authorised access",
+      "body": "Personal and medical information must be handled under approved FNPH policies and applicable data-protection obligations. Access is restricted by role. You should protect your login and join from a quiet, private environment."
+    },
+    {
+      "title": "05 Information collected and its use",
+      "body": "The service may process identity and EHR details, contact information, symptoms, vital signs, uploaded results, appointments, payments and consultation information to provide care, coordinate follow-up, manage the service and meet legal obligations."
+    },
+    {
+      "title": "06 Security, storage and retention",
+      "body": "Approved systems should use authentication, authorisation, audit trails and appropriate encryption. Information is kept for the periods required by clinical, legal, regulatory and hospital policy, not indefinitely merely because storage is available."
+    },
+    {
+      "title": "07 Your data-protection rights",
+      "body": "Subject to applicable limits, you may ask how your information is used, request access or correction, seek restriction of some processing, withdraw consent where applicable and raise a complaint. Withdrawal does not automatically erase records the hospital must lawfully retain."
+    },
+    {
+      "title": "08 Recording and transcription",
+      "body": "Recording or transcription is allowed only under an approved hospital policy with the required information and consent. It is not automatically enabled by joining a video room. A separate recording decision may be requested before a session."
+    },
+    {
+      "title": "09 Timing and patient responsibilities",
+      "body": "Sessions use a fixed 30-minute appointment. Joining late does not extend the end time. You are responsible for punctuality, a charged device, reasonable connectivity, truthful information, respectful behaviour and a private setting."
+    },
+    {
+      "title": "10 Payment, withdrawal and contact",
+      "body": "Payment is completed later in the booking journey. You may contact the hospital about this notice or withdrawing from the service, subject to clinical and legal record duties. FNPH clinical support: 0803 272 2243."
+    }
+  ],
+  "declarations": [
+    "I have read and understood the telepsychiatry consent and data-protection notice.",
+    "I voluntarily consent to non-emergency telepsychiatry care.",
+    "I understand how my personal and medical information will be used for care.",
+    "I will provide accurate information and seek urgent physical care if necessary.",
+    "I understand the 30-minute timing and need for a private, suitable setting.",
+    "I understand recording and transcription require approved governance and, where required, a separate decision."
+  ],
+  "triage": [
+    "Are you in immediate danger of harming yourself or another person?",
+    "Are you having suicidal thoughts without a responsible person physically present to support you?",
+    "Is this your first episode of acute psychosis, severe confusion, hallucinations or loss of contact with reality?",
+    "Are you severely agitated or unable to participate safely by video or audio?",
+    "Do you need immediate physical medical attention or have you been advised that admission may be required?"
+  ]
+}

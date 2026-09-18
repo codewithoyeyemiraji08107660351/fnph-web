@@ -11,6 +11,7 @@ import { AppointmentBadge, WorkStateBadge } from '@/components/ui/AppointmentBad
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { VitalsList } from './VitalsList'
+import { IntakeSummary } from '@/features/patient/IntakeSummary'
 
 // room_open_lead_minutes default. Only shapes the button label; the server decides.
 const LEAD_MINUTES_FALLBACK = 15
@@ -56,7 +57,7 @@ function Row({ row, now }: { row: DoctorQueueRow; now: number }) {
       <button type="button" className="btn btn-quiet btn-sm mt-2 -ml-3" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <i aria-hidden className={`bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}`} /> Pre-review: vitals
       </button>
-      {open && <div className="mt-2"><VitalsList appointmentPublicId={row.appointmentPublicId} /></div>}
+      {open && <div className="mt-2"><IntakeSummary appointmentId={row.appointmentPublicId} /><VitalsList appointmentPublicId={row.appointmentPublicId} /></div>}
     </li>
   )
 }

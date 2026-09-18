@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { consultationApi } from '@/lib/api/endpoints/clinical'
 import { ConsultFrame } from '@/features/consult/ConsultFrame'
@@ -10,6 +10,13 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Alert } from '@/components/ui/Alert'
 
 export function PatientRoom() {
+  const [ready, setReady] = useState(false)
+  const [privatePlace, setPrivatePlace] = useState(false)
+  if (ready) return <ConnectedPatientRoom />
+  return <><div className="screen-heading"><span className="eyebrow">Secure waiting room</span><h1>Settle in before meeting your clinician</h1><p>Find a quiet, private place. Keep your medicines and recent results nearby.</p></div><div className="card journey-form"><h2>Prepare for your consultation</h2><p>Check your internet connection and charge your device. Camera and microphone permissions will be requested by the secure consultation room.</p><label className="check-line"><input type="checkbox" checked={privatePlace} onChange={e => setPrivatePlace(e.target.checked)} /><span>I am in a private place and understand that joining late will not extend the fixed 30-minute session.</span></label><button className="live-button" disabled={!privatePlace} onClick={() => setReady(true)}>● Join secure consultation</button><Link to="/portal/appointments">Back to appointments</Link></div></>
+}
+
+function ConnectedPatientRoom() {
   useDocumentTitle('Your consultation')
   const { appointmentId = '' } = useParams()
   const { emergencyNumber } = usePublicSettings()

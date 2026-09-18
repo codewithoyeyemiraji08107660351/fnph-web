@@ -46,7 +46,7 @@ function Breakdown({ payment }: { payment: PaymentView }) {
   )
 }
 
-export function PaymentStep({ appointment }: { appointment: Appointment }) {
+export function PaymentStep({ appointment, onPaid }: { appointment?: Appointment; onPaid?: (payment: PaymentView) => void }) {
   const qc = useQueryClient()
   const { helpdeskEmail } = usePublicSettings()
   const history = useQuery({ queryKey: ['my-payments'], queryFn: paymentApi.mine })
@@ -72,18 +72,18 @@ export function PaymentStep({ appointment }: { appointment: Appointment }) {
   const booking = useQuery({
     queryKey: ['my-appointments', 'confirming'],
     queryFn: bookingApi.mine,
-    enabled: paid && !confirmed,
+    enabled: paid && !confirmed && !!appointment,
     refetchInterval: 4000,
   })
   useEffect(() => {
-    const current = booking.data?.find((a) => a.publicId === appointment.publicId)
+    const current = booking.data?.find((a) => a.publicId === appointment?.publicId)
     if (current && current.status !== 'SLOT_HELD' && current.status !== 'EXPIRED') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setConfirmed(true)
       sessionStorage.removeItem('fnph.booking.vitalsFor')
       void qc.invalidateQueries({ queryKey: ['my-appointments'] })
     }
-  }, [booking.data, appointment.publicId, qc])
+  }, [booking.data, appointment?.publicId, qc])
 
   const check = async (silent = false) => {
     if (!payment) return
@@ -126,7 +126,7 @@ export function PaymentStep({ appointment }: { appointment: Appointment }) {
     }
   }
 
-  if (confirmed) {
+  if (confirmed && appointment) {
     return (
       <Panel>
         <span className="grid size-12 place-items-center rounded-2xl bg-mint text-xl text-forest">
@@ -169,8 +169,9 @@ export function PaymentStep({ appointment }: { appointment: Appointment }) {
         <div className="space-y-4">
           <Breakdown payment={payment} />
           <div className="flex items-center gap-3 rounded-[14px] bg-mint px-4 py-3 text-sm text-forest-900">
-            <Spinner /> Payment confirmed. Sending your request to the hospital.
+            Payment verified by the server. You can now choose a published date and time.
           </div>
+          {onPaid && <button className="btn btn-primary" onClick={() => onPaid(payment)}>Choose a date and time →</button>}
         </div>
       ) : payment.status === 'PENDING' ? (
         <div className="space-y-5">
@@ -188,7 +189,7 @@ export function PaymentStep({ appointment }: { appointment: Appointment }) {
             <p className="font-bold">How to pay</p>
             <p className="mt-1 text-muted">
               Pay {formatNaira(payment.payableAmount)} against this RRR through your bank app, internet banking, at any bank branch, or on the Remita website. Keep the receipt. The
-              reference is valid until {formatDateTime(payment.expiresAt)} WAT, but your held time runs out sooner.
+              reference is valid until {formatDateTime(payment.expiresAt)} WAT. Calendar selection opens after payment is verified.
             </p>
           </div>
           <button type="button" className="btn btn-primary w-full sm:w-auto" disabled={checking} onClick={() => check()}>

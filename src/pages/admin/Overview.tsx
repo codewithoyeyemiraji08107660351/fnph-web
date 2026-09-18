@@ -98,7 +98,6 @@ export function Overview() {
           {can('appointment.read') && <Link to="/admin/cancellations" className="btn btn-secondary btn-sm no-underline">Cancellation requests</Link>}
           {can('ehr_verification.resolve') && <Link to="/admin/verification" className="btn btn-secondary btn-sm no-underline">Enrolment checks</Link>}
           {can('ticket.read') && <Link to="/admin/support" className="btn btn-secondary btn-sm no-underline">Support queue</Link>}
-          {can('consent.manage_versions') && <Link to="/admin/versions" className="btn btn-secondary btn-sm no-underline">Consent and safety questions</Link>}
         </div>
         {health.data && <p className="mt-3 text-xs text-muted">Health last checked {formatDateTime(health.data.checkedAt as string)}.</p>}
       </Panel>

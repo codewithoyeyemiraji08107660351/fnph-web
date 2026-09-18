@@ -43,7 +43,6 @@ export const ADMIN_NAV: NavItem[] = [
   { to: '/admin/verification', label: 'Enrolment checks', icon: 'bi-person-check', permission: 'ehr_verification.resolve' },
   { to: '/admin/notifications', label: 'Notices', icon: 'bi-megaphone', permission: 'notification.send' },
   { to: '/admin/support', label: 'Support queue', icon: 'bi-headset', permission: 'ticket.read' },
-  { to: '/admin/versions', label: 'Consent and safety questions', icon: 'bi-ui-checks', permission: 'consent.manage_versions' },
   { to: '/admin/appointments', label: 'Appointments by day', icon: 'bi-calendar3', permission: 'appointment.read' },
   { to: '/admin/cancellations', label: 'Cancellation requests', icon: 'bi-calendar-x', permission: 'appointment.read' },
   { to: '/admin/patients', label: 'Patients', icon: 'bi-person-vcard', permission: 'patient.read' },

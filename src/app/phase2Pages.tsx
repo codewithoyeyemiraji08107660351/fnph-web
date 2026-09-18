@@ -49,7 +49,6 @@ export const SupportQueue = lazy(() => import('@/pages/support/SupportQueue').th
 export const MySupport = lazy(() => import('@/pages/support/MySupport').then((m) => ({ default: m.MySupport })))
 
 // Remaining integrations
-export const Versions = lazy(() => import('@/pages/admin/Versions').then((m) => ({ default: m.Versions })))
 export const DocumentsAdmin = lazy(() => import('@/pages/admin/DocumentsAdmin').then((m) => ({ default: m.DocumentsAdmin })))
 export const HubToday = lazy(() => import('@/pages/hub/Today').then((m) => ({ default: m.Today })))
 export const Cancellations = lazy(() => import('@/pages/hub/Cancellations').then((m) => ({ default: m.Cancellations })))

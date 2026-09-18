@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 
 const at = (minutes) => new Date(Date.now() + minutes * 60_000).toISOString()
 const watDay = (offsetDays) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos' }).format(new Date(Date.now() + offsetDays * 86_400_000))
+const journeyContent = JSON.parse(readFileSync(resolve(process.cwd(), 'src/features/patient/journey-content.json'), 'utf8'))
 let seq = 100
 const id = (prefix) => `${prefix}-${++seq}`
 
@@ -14,7 +15,8 @@ export const PATIENTS = {
 }
 
 export const state = {
-  consentVersion: '2026.1',
+  consentVersion: 'FNPH-TP-CONSENT-01',
+  receipts: {}, intakes: {}, profiles: {},
   consented: false,
   triage: [],
   takenOnce: false,
@@ -102,23 +104,57 @@ export function handlePhase2({ req, res, url, path, m, me, body, send, err }) {
   // ---------------- Patient pathway ----------------
   if (path === '/consent/current' && m === 'GET') {
     if (!can('consent.read') && !can('consent.accept')) return deny(), true
-    return send(res, 200, { version: state.consentVersion, title: 'Consent to telepsychiatry', body: 'FNPH Kaduna provides follow-up consultations by secure video to existing patients.\n\nThe service is not for emergencies. Consultations last 30 minutes and are not recorded. Your information is seen only by the staff involved in your care.\n\nYou can stop at any time.' }), true
+    return send(res, 200, { version: state.consentVersion, title: 'Patient consent and data-protection notice', body: journeyContent.sections.map(s => s.title+'\n'+s.body).join('\n\n') }), true
   }
-  if (path === '/consent/accept') { state.consented = true; return send(res, 201, { publicId: id('CA'), version: state.consentVersion, acceptedAt: new Date().toISOString() }), true }
-  if (path === '/triage/questions') {
-    return send(res, 200, { version: 'T1', questions: [
-      { publicId: 'Q1', sequence: 1, questionText: 'Are you in a private place where you can talk freely?' },
-      { publicId: 'Q2', sequence: 2, questionText: 'Are you thinking about harming yourself or someone else right now?' },
-      { publicId: 'Q3', sequence: 3, questionText: 'Do you have a working phone or computer with a camera?' },
-    ] }), true
+  if (path === '/consent/mine') return send(res,200,state.receipts[patientId]??{}),true
+  if (path === '/consent/accept') {
+    if (!body.read || body.version !== state.consentVersion || !body.signature?.trim().includes(' ') || body.declarations?.length !== 6 || !body.declarations.every(v=>v===true)) return err(res,400,'Complete every declaration and enter your full name.'),true
+    state.consented=true
+    const receipt={publicId:id('CA'),version:state.consentVersion,acceptedAt:new Date().toISOString(),signature:body.signature}
+    state.receipts[patientId]=receipt
+    return send(res,201,receipt),true
   }
+  if (path === '/patient/profile') {
+    if(m==='PUT') state.profiles[patientId]=body
+    return send(res,200,state.profiles[patientId]??{phone:'',email:'',location:''}),true
+  }
+  if (path === '/triage/questions') return send(res,200,{version:'FNPH-TP-TRIAGE-01',questions:journeyContent.triage.map((text,i)=>({publicId:'Q'+(i+1),sequence:i+1,questionText:text}))}),true
   if (path === '/triage/responses') {
-    const stopped = body.Q2 === 'YES' || body.Q1 === 'NO'
-    const r = { publicId: id('TR'), outcome: stopped ? 'STOPPED' : 'PROCEED', mayProceed: !stopped, stopReason: stopped ? (body.Q2 === 'YES' ? 'Current risk of harm' : 'No private space') : null, escalation: stopped ? 'This service cannot help with what you have described, and it is not for emergencies.\n\nPlease call the clinical emergency line now, or go to the nearest hospital emergency department.' : null }
-    state.triage.unshift(r)
-    return send(res, 201, r), true
+    if(!journeyContent.triage.every((_,i)=>['YES','NO'].includes(body['Q'+(i+1)]))) return err(res,400,'Answer every question.'),true
+    const stopped=Object.values(body).includes('YES')
+    const r={publicId:id('TR'),patientId,outcome:stopped?'STOPPED':'PROCEED',mayProceed:!stopped,stopReason:stopped?'Urgent in-person assessment is needed':null,escalation:stopped?'Online booking stopped. Please seek urgent in-person care. Call 112 if you are in immediate danger.':null}
+    state.triage.unshift(r);return send(res,201,r),true
+  }
+  if(path==='/patient/intake') {
+    if(m==='GET') return send(res,200,state.intakes[patientId]??null),true
+    if(!state.receipts[patientId] || state.triage.find(r=>r.patientId===patientId)?.outcome!=='PROCEED') return err(res,409,'Complete consent and safety questions first.'),true
+    if(!body.reason?.trim() || (!body.vitals && !body.evidenceIds?.length)) return err(res,400,'Provide your reason and vital signs or evidence.'),true
+    state.intakes[patientId]={publicId:state.intakes[patientId]?.publicId??id('I'),intake:body}
+    return send(res,200,state.intakes[patientId]),true
+  }
+  if(path.startsWith('/patient/intake/appointments/')) return send(res,200,appt(path.split('/').pop())?.intake??null),true
+  if(path==='/booking/days') {
+    if(!state.payments.some(p=>p.status==='SUCCESS'&&!p.usedForBooking)) return err(res,409,'Verify payment before choosing a date.'),true
+    return send(res,200,Array.from({length:85},(_,i)=>watDay(i+1)).filter((_,i)=>i%3!==0)),true
+  }
+  if(path==='/booking/request') {
+    const previous=state.appointments.find(a=>a.intakeId===body.intakePublicId && a.patientId===patientId)
+    if(previous) return send(res,200,view(previous)),true
+    const draft=state.intakes[patientId]
+    const paid=state.payments.find(p=>p.status==='SUCCESS'&&!p.usedForBooking)
+    if(!draft || draft.publicId!==body.intakePublicId || !paid || state.triage.find(r=>r.patientId===patientId)?.outcome!=='PROCEED') return err(res,409,'Complete intake, safety and payment before booking.'),true
+    const matched=typeof body.slotPublicId === 'string'
+      ? body.slotPublicId.match(/^S-(?:FIRST-)?(\d{4}-\d{2}-\d{2})(?:-(\d+))?$/)
+      : null
+    if(!matched) return err(res,409,'Choose an available time.'),true
+    const h=[8,8.5,9,10,11,13][Number(matched[2]??0)]
+    const start=new Date(matched[1]+'T'+String(Math.floor(h)).padStart(2,'0')+':'+(h%1?'30':'00')+':00+01:00')
+    const a={publicId:id('A'),reference:'APT-'+seq,status:'AWAITING_APPROVAL',patientId,appointmentDate:start.toISOString(),scheduledEndAt:new Date(+start+1800000).toISOString(),heldUntil:null,room:null,nursing:'UNTREATED',himState:'UNTREATED',intake:draft.intake,intakeId:draft.publicId}
+    state.appointments.push(a);paid.usedForBooking=true;delete state.intakes[patientId]
+    return send(res,201,view(a)),true
   }
   if (path === '/booking/times') {
+    if(!state.payments.some(p=>p.status==='SUCCESS'&&!p.usedForBooking)) return err(res,409,'Verify payment before choosing a time.'),true
     const date = url.searchParams.get('date')
     const hours = date === watDay(0) ? [15, 16] : [8, 8.5, 9, 10, 11, 13]
     return send(res, 200, hours.map((h, i) => {
@@ -126,7 +162,7 @@ export function handlePhase2({ req, res, url, path, m, me, body, send, err }) {
       const mm = h % 1 ? '30' : '00'
       const endH = h % 1 ? String(Math.floor(h) + 1).padStart(2, '0') : hh
       const endM = h % 1 ? '00' : '30'
-      return { startAt: `${date}T${hh}:${mm}:00Z`, endAt: `${date}T${endH}:${endM}:00Z`, slotPublicId: i === 0 ? `S-FIRST-${date}` : `S-${date}-${i}`, remaining: i === 1 ? 1 : 3 }
+      return { startAt: `${date}T${hh}:${mm}:00+01:00`, endAt: `${date}T${endH}:${endM}:00+01:00`, slotPublicId: i === 0 ? `S-FIRST-${date}` : `S-${date}-${i}`, remaining: i === 1 ? 1 : 3 }
     })), true
   }
   if (path === '/booking/hold') {
@@ -162,6 +198,7 @@ export function handlePhase2({ req, res, url, path, m, me, body, send, err }) {
   if (path === '/payments/credit') return send(res, 200, { balance: 2000, currency: 'NGN', entries: [] }), true
   if (path === '/payments/mine') return send(res, 200, state.payments), true
   if (path === '/payments/initiate') {
+    if(!state.intakes[patientId]) return err(res,409,'Complete consultation information before payment.'),true
     const existing = state.payments.find((p) => !p.usedForBooking && (p.status === 'PENDING' || p.status === 'SUCCESS'))
     if (existing) return send(res, 200, existing), true
     const p = { publicId: id('PAY'), reference: `FNPH-${seq}`, rrr: '280007123456', status: 'PENDING', amount: 10000, creditApplied: 2000, payableAmount: 8000, currency: 'NGN', initiatedAt: new Date().toISOString(), verifiedAt: null, expiresAt: at(48 * 60), failureReason: null, amountMismatch: false, usedForBooking: false, checks: 0 }

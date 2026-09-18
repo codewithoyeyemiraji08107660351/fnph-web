@@ -78,6 +78,7 @@ export function Enrol() {
   const { emergencyNumber } = usePublicSettings()
   const [step, setStep] = useState<Step>('lookup')
   const [ehrNumber, setEhrNumber] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
   const [match, setMatch] = useState<EnrolmentLookup | null>(null)
   const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
@@ -92,9 +93,7 @@ export function Enrol() {
     setError(null)
     try {
       setMatch(
-        // FNPH enrols by hospital number alone. The code sent to the contact on
-        // the hospital record is what proves the person is the patient.
-        await enrolmentApi.lookup({ ehrNumber: ehrNumber.trim() }),
+        await enrolmentApi.lookup({ ehrNumber: ehrNumber.trim(), dateOfBirth }),
       )
       setStep('confirm')
     } catch (err) {
@@ -176,6 +175,7 @@ export function Enrol() {
           <p className="mt-2 text-sm text-muted">Enter the hospital number printed on your card. We send a code to the email or phone the hospital has for you. New patients must be seen at the hospital first.</p>
           {error && <Alert tone="danger" className="mt-4">{error}</Alert>}
           <TextField wrapperClassName="mt-5" label="Hospital (EHR) number" value={ehrNumber} onChange={(e) => setEhrNumber(e.target.value)} autoCapitalize="characters" spellCheck={false} required />
+          <TextField wrapperClassName="mt-4" label="Date of birth" type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} required hint="A second identity check protects your hospital record." />
           <button type="submit" className="btn btn-primary mt-6 w-full" disabled={busy}>
             {busy ? <Spinner label="Checking" inverted /> : 'Send my code'}
           </button>

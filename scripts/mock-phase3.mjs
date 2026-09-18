@@ -301,7 +301,10 @@ export function handlePhase3({ req, res, url, path, m, me, body, send, err, user
   if (path === '/admin/ehr-imports' && m === 'GET') return can('ehr_import.read') ? (send(res, 200, imports), true) : deny()
   if (path === '/admin/ehr-imports/active') { const a = imports.find((i) => i.status === 'ACTIVE'); return a ? send(res, 200, a) : err(res, 404, 'No import is active'), true }
   if (path === '/admin/ehr-imports' && m === 'POST') {
-    const i = { publicId: id('IMP'), fileName: 'uploaded-export.csv', status: 'VALIDATED', sourceAsAt: q('sourceAsAt'), ageInDays: 3, rowCount: 18300, validRowCount: 18296, rejectedRowCount: 4, validationReport: 'Row 17: missing phone', driftDetectedCount: 12, uploadedBy: me.username, uploadedAt: new Date().toISOString(), activatedAt: null, activatedBy: null }
+    if (!can('ehr_import.upload')) return deny()
+    const now = new Date().toISOString()
+    const i = { publicId: id('IMP'), fileName: 'uploaded-export.csv', status: 'ACTIVE', sourceAsAt: q('sourceAsAt'), ageInDays: 3, rowCount: 18300, validRowCount: 18296, rejectedRowCount: 4, validationReport: 'Row 17: invalid date of birth', driftDetectedCount: 12, uploadedBy: me.username, uploadedAt: now, activatedAt: now, activatedBy: me.username }
+    imports.forEach((previous) => { if (previous.status === 'ACTIVE') previous.status = 'SUPERSEDED' })
     imports.unshift(i)
     return send(res, 200, i), true
   }

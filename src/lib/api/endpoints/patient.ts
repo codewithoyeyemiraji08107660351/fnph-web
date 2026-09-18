@@ -37,17 +37,34 @@ export const enrolmentApi = {
 
 export const carePathApi = {
   consent: () => api.get<ConsentDocumentView>('/consent/current'),
-  acceptConsent: () => api.post<{ publicId: string; version: string; acceptedAt: string }>('/consent/accept'),
+  receipt: () => api.get<{ publicId?: string; version?: string; acceptedAt?: string; signature?: string }>('/consent/mine'),
+  acceptConsent: (body: { version: string; read: boolean; signature: string; declarations: boolean[] }) => api.post<{ publicId: string; version: string; acceptedAt: string }>('/consent/accept', body),
   questions: () => api.get<TriageQuestionSet>('/triage/questions'),
   submitTriage: (answers: Record<string, 'YES' | 'NO'>) => api.post<TriageResult>('/triage/responses', answers),
 }
 
 export const bookingApi = {
+  days: () => api.list<string>('/booking/days'),
+  request: (intakePublicId: string, slotPublicId: string) => api.post<Appointment>('/booking/request', { intakePublicId, slotPublicId }),
   times: (date: string) => api.list<AvailableTime>('/booking/times', { params: { date } }),
   /** 409 when the time went. The appointment may be on another room at the same time. */
   hold: (slotPublicId: string) => api.post<Appointment>('/booking/hold', { slotPublicId }),
   mine: () => api.list<Appointment>('/booking/mine'),
   history: (appointmentPublicId: string) => api.list<AppointmentHistory>(`/booking/${seg(appointmentPublicId)}/history`),
+}
+
+export interface PatientIntake {
+  reason: string
+  context: string
+  mode: 'VIDEO' | 'AUDIO_FALLBACK'
+  vitals?: VitalsInput | null
+  evidenceIds: string[]
+  laboratoryIds: string[]
+}
+export interface IntakeDraft { publicId: string; intake: PatientIntake }
+export const intakeApi = {
+  current: () => api.get<IntakeDraft | null>('/patient/intake'),
+  save: (intake: PatientIntake) => api.put<IntakeDraft>('/patient/intake', intake),
 }
 
 export const paymentApi = {

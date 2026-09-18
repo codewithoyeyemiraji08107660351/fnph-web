@@ -9,6 +9,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { SelectField, TextAreaField } from '@/components/ui/Field'
 import { Alert } from '@/components/ui/Alert'
 import { Spinner } from '@/components/ui/Spinner'
+import { IntakeSummary } from '@/features/patient/IntakeSummary'
 
 const TEAM: Array<{ key: 'nursePublicId' | 'pharmacistPublicId' | 'laboratoryTechnicianPublicId' | 'himOfficerPublicId'; role: string; label: string; warning: string }> = [
   { key: 'nursePublicId', role: 'NURSING', label: 'Nurse', warning: 'Without a nurse, nobody verifies the vitals or prepares the room, and preparation cannot be completed.' },
@@ -112,6 +113,7 @@ export function ApproveDialog({ appointment, onClose, onDone, pathway = 'fnph' }
       }
     >
       {loading && <Spinner label="Loading the rota, rooms and staff" />}
+      {!centre && <IntakeSummary appointmentId={appointment.publicId} />}
       {loadError && <Alert tone="danger" className="mb-4">{toApiError(loadError).message}</Alert>}
       {error && (
         <Alert tone="danger" className="mb-4" title="Not approved">

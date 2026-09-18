@@ -6,6 +6,8 @@ import { AppShell } from '@/components/layout/AppShell'
 import { RequireAuth, RequirePermission, RequireRole, DashboardRedirect } from '@/lib/auth/guards'
 import { CENTRAL_ADMINISTRATOR, ROLES } from '@/lib/auth/roles'
 import { Landing } from '@/pages/public/Landing'
+import { PatientConsent } from '@/features/patient/PatientConsent'
+import { PatientProfile } from '@/features/patient/PatientProfile'
 import { PatientEntrance } from '@/pages/public/PatientEntrance'
 import { StaffEntrance } from '@/pages/public/StaffEntrance'
 import { CentreEntrance } from '@/pages/public/CentreEntrance'
@@ -61,7 +63,6 @@ import {
   Quarantine,
   SupportQueue,
   MySupport,
-  Versions,
   DocumentsAdmin,
   HubToday,
   Cancellations,
@@ -108,6 +109,8 @@ const CENTRE_ROLES = ['CENTRE_HUB_COORDINATOR', 'CENTRE_ASSISTANT_COORDINATOR', 
 const phase2Routes = [
   workspace(['PATIENT'], [
     { index: true, element: <PortalHome /> },
+    { path: 'consent', element: <PatientConsent /> },
+    { path: 'profile', element: <PatientProfile /> },
     { path: 'booking', element: gated('slot.hold', <BookingFlow />) },
     { path: 'payment', element: <PaymentReturn /> },
     { path: 'payment/return', element: <PaymentReturn /> },
@@ -254,7 +257,6 @@ export const router = createBrowserRouter([
               { path: 'verification', element: admin('ehr_verification.resolve', <VerificationQueue />) },
               { path: 'notifications', element: <AdminNotifications /> },
               { path: 'support', element: admin('ticket.read', <SupportQueue />) },
-              { path: 'versions', element: admin('consent.manage_versions', <Versions />) },
               { path: 'documents', element: admin('document.read', <DocumentsAdmin />) },
               { path: 'appointments', element: admin('appointment.read', <HubToday />) },
               { path: 'cancellations', element: admin('appointment.read', <Cancellations />) },
