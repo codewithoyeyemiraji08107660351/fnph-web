@@ -7,9 +7,10 @@ import { initials, parseServerTime } from '@/lib/format'
 import { useNow } from '@/lib/hooks/useNow'
 import { NotificationMenu } from './NotificationMenu'
 import { InactivityGuard } from './InactivityGuard'
-import { SafetyRibbon, StaffRibbon } from './SafetyRibbon'
+import { StaffRibbon } from './SafetyRibbon'
 import { useToast } from '@/components/ui/Toast'
 import { Spinner } from '@/components/ui/Spinner'
+import { PatientExperience } from '@/features/patient/PatientExperience'
 
 function useNavigation(): NavItem[] {
   const { principal, canOwn, supervision } = useAuth()
@@ -118,6 +119,7 @@ export function AppShell() {
 
   if (!principal) return null
   const portal = portalForScope(principal.scope)
+  if (portal === 'patient') return <PatientExperience><InactivityGuard /><Outlet /></PatientExperience>
   // Exact match first, then the closest parent, so deep pages keep their section name.
   const current =
     nav.find((n) => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to))) ??
@@ -182,7 +184,7 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-h-dvh flex-col lg:pl-[272px]">
-        {portal === 'patient' ? <SafetyRibbon compact /> : <StaffRibbon />}
+        <StaffRibbon />
         <SupervisionBanner />
         <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
           <div className="flex h-[70px] items-center gap-3 px-4 sm:px-6">

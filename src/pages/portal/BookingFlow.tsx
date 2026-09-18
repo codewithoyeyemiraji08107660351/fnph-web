@@ -24,7 +24,8 @@ export function BookingFlow() {
   if(!receipt.data?.publicId) return <PatientConsent onDone={() => {void receipt.refetch()}} />
   if(stopped) return <StopScreen result={stopped} />
   if(appointment) return <div className="status-card"><span className="status-icon amber">◷</span><span className="eyebrow">Request submitted</span><h1>Waiting for Hub Coordinator approval</h1><p>Your payment is verified and your requested time is reserved. The Hub Coordinator reviews your request and assigns the care team and room.</p><p><b>{formatDateTime(appointment.appointmentDate)} WAT</b></p><p>Reference {appointment.reference}</p><Link className="button primary" to="/portal/appointments">View my appointment</Link></div>
-  return <><ol className="journey-progress" aria-label="Request progress">{['triage','intake','payment','schedule'].map((s,i)=><li key={s} aria-current={s===step?'step':undefined}>{i+1}. {['Safety check','Recent information','Payment','Date & time'][i]}</li>)}</ol>
+  const stage = { triage: ['Safety check', 'Check whether online care is safe today', 'Request · 1 of 4'], intake: ['Consultation request', 'Tell the team what you need', 'Request · 2 of 4'], payment: ['Payment confirmation', 'Complete the consultation fee', 'Request · 3 of 4'], schedule: ['Booking', 'Choose a published date and time', 'Request · 4 of 4'] }[step]
+  return <><div className="stage-header"><div><span>{stage[0]}</span><strong>{stage[1]}</strong></div><span className="step-pill">{stage[2]}</span></div>
     {step==='triage' && <TriageStep onProceed={() => setStep('intake')} onStop={setStopped} />}
     {step==='intake' && <IntakeStep initial={draft ?? saved.data} onSaved={d => {setDraft(d);setStep('payment');void qc.invalidateQueries({queryKey:['patient-intake']})}} />}
     {step==='payment' && <PaymentStep onPaid={() => setStep('schedule')} />}

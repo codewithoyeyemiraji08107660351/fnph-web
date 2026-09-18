@@ -128,6 +128,39 @@ export interface EhrImport {
   activatedBy?: string
 }
 
+export type EhrManualSyncStatus = 'MATCHED' | 'DIFFERENT' | 'MANUAL_ONLY' | 'NO_ACTIVE_IMPORT'
+export interface ManualEhrRecord {
+  publicId: string
+  version: number
+  ehrNumber: string
+  fullName: string
+  dateOfBirth: string
+  phoneNumber?: string
+  email?: string
+  clinic?: string
+  patientStatus?: string
+  active: boolean
+  syncStatus: EhrManualSyncStatus
+  lastSyncedAt?: string
+  lastSyncedBy?: string
+  lastSyncDirection?: 'FROM_IMPORT' | 'TO_IMPORT'
+  updatedAt?: string
+  updatedBy?: string
+}
+
+export type ManualEhrRecordInput = {
+  ehrNumber: string
+  fullName: string
+  dateOfBirth: string
+  phoneNumber?: string
+  email?: string
+  clinic?: string
+  patientStatus?: string
+  active: boolean
+  reason: string
+  version?: number
+}
+
 export type VerificationStatus = 'SUBMITTED' | 'WITH_HIM' | 'WITH_ICT' | 'RESOLVED' | 'REJECTED'
 
 export interface VerificationRequest {
@@ -153,6 +186,11 @@ export const ictApi = {
     return http.post<EhrImport>('/admin/ehr-imports', form, { params: { sourceAsAt }, timeout: 120_000 }).then((r) => r.data)
   },
   activate: (id: string, reason: string) => api.post<EhrImport>(`/admin/ehr-imports/${seg(id)}/activate`, null, { params: { reason } }),
+  manualRecords: () => api.list<ManualEhrRecord>('/admin/ehr-records/manual'),
+  createManualRecord: (body: ManualEhrRecordInput) => api.post<ManualEhrRecord>('/admin/ehr-records/manual', body),
+  updateManualRecord: (id: string, body: ManualEhrRecordInput) => api.put<ManualEhrRecord>(`/admin/ehr-records/manual/${seg(id)}`, body),
+  syncManualRecord: (id: string, direction: 'FROM_IMPORT' | 'TO_IMPORT', reason: string) =>
+    api.post<ManualEhrRecord>(`/admin/ehr-records/manual/${seg(id)}/sync`, { direction, reason }),
   /** A plain list: the controller returns the page's content, not the page. */
   verificationQueue: (status?: VerificationStatus, page = 0) =>
     api.list<VerificationRequest>('/admin/verification-requests', { params: { status, page, size: 50 } }),

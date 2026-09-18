@@ -49,6 +49,7 @@ const broadcasts = []
 const wallets = { 'C-KDN': { balance: 45000, ledger: [{ reference: 'TSA-0001', direction: 'CREDIT', amount: 50000, balanceAfter: 50000, description: 'Opening fund', source: 'FINANCE', at: at(-5000) }, { reference: 'CAPT-OLD1', direction: 'DEBIT', amount: 5000, balanceAfter: 45000, description: 'Consultation', source: 'BOOKING', at: at(-100) }] }, 'C-ZAR': { balance: 2000, ledger: [] } }
 const exceptions = [{ publicId: 'EX-1', type: 'AMOUNT_MISMATCH', expected: 10000, reported: 12000, details: 'Remita reported 12,000 for FNPH-77', raisedAt: at(-700) }]
 const imports = [{ publicId: 'IMP-1', fileName: 'ehr-export-2026-09-01.csv', status: 'ACTIVE', sourceAsAt: '2026-09-01', ageInDays: 14, rowCount: 18204, validRowCount: 18190, rejectedRowCount: 14, validationReport: 'Row 88: missing date of birth\nRow 412: invalid phone', driftDetectedCount: 36, uploadedBy: 'ict', uploadedAt: at(-20000), activatedAt: at(-19000), activatedBy: 'admin' }]
+const manualEhrRecords = [{ publicId: 'MEHR-1', version: 0, ehrNumber: '204815', fullName: 'Prototype Patient', dateOfBirth: '1990-04-12', phoneNumber: '08031234567', email: 'patient@example.test', clinic: 'General Adult Clinic', patientStatus: 'ACTIVE', active: true, syncStatus: 'DIFFERENT', updatedAt: at(-120), updatedBy: 'admin' }]
 const verifications = [{ publicId: 'VR-1', ehrNumberClaimed: '301122', fullName: 'Grace Yohanna', dateOfBirth: '1979-11-02', phoneNumber: '08039990000', preferredContact: 'CALL', supportingNote: 'I changed my number last year.', status: 'SUBMITTED', submittedAt: at(-400) }]
 const tickets = [{ publicId: 'TK-1', ticketNumber: 'SUP-0001', category: 'PAYMENT', priority: 'HIGH', status: 'OPEN', subject: 'Paid but booking not confirmed', escalatedToRole: null, firstResponseMinutes: null, resolutionSummary: null, createdAt: at(-240), raisedBy: 'U-PT', messages: [{ author: 'Fatima Sani', body: 'I paid with RRR 280007123456 but my booking still shows held.', internal: false, sentAt: at(-240) }] }]
 
@@ -314,6 +315,29 @@ export function handlePhase3({ req, res, url, path, m, me, body, send, err, user
     imports.forEach((i) => { if (i.status === 'ACTIVE') i.status = 'SUPERSEDED' })
     const i = imports.find((x) => x.publicId === ia[1]); Object.assign(i, { status: 'ACTIVE', activatedAt: new Date().toISOString(), activatedBy: me.username })
     return send(res, 200, i), true
+  }
+  if (path === '/admin/ehr-records/manual' && m === 'GET') return can('ehr_import.read') ? (send(res, 200, manualEhrRecords), true) : deny()
+  if (path === '/admin/ehr-records/manual' && m === 'POST') {
+    if (!can('ehr_import.upload')) return deny()
+    const row = { publicId: id('MEHR'), version: 0, ...body, syncStatus: 'MANUAL_ONLY', updatedAt: new Date().toISOString(), updatedBy: me.username }
+    delete row.reason
+    manualEhrRecords.unshift(row)
+    return send(res, 201, row), true
+  }
+  const mer = path.match(/^\/admin\/ehr-records\/manual\/([^/]+)$/)
+  if (mer && m === 'PUT') {
+    if (!can('ehr_import.upload')) return deny()
+    const row = manualEhrRecords.find((x) => x.publicId === mer[1])
+    Object.assign(row, body, { version: row.version + 1, syncStatus: 'DIFFERENT', updatedAt: new Date().toISOString(), updatedBy: me.username })
+    delete row.reason
+    return send(res, 200, row), true
+  }
+  const mes = path.match(/^\/admin\/ehr-records\/manual\/([^/]+)\/sync$/)
+  if (mes && m === 'POST') {
+    if (!can('ehr_import.activate')) return deny()
+    const row = manualEhrRecords.find((x) => x.publicId === mes[1])
+    Object.assign(row, { version: row.version + 1, syncStatus: 'MATCHED', lastSyncedAt: new Date().toISOString(), lastSyncedBy: me.username, lastSyncDirection: body.direction, updatedAt: new Date().toISOString(), updatedBy: me.username })
+    return send(res, 200, row), true
   }
   if (path === '/admin/verification-requests') { const st = q('status'); const rows = verifications.filter((v) => !st || v.status === st); return send(res, 200, { content: rows, totalElements: rows.length, totalPages: 1, number: 0, size: 50 }), true }
   const vr = path.match(/^\/admin\/verification-requests\/([^/]+)\/(assign|resolve)$/)

@@ -4,6 +4,7 @@ import { Brand } from '@/components/ui/Brand'
 import { SafetyRibbon } from './SafetyRibbon'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { safeDashboardRoute } from '@/lib/auth/roles'
+import { PatientExperience } from '@/features/patient/PatientExperience'
 
 const NAV = [
   { to: '/patients', label: 'Patients' },
@@ -19,6 +20,9 @@ export function PublicLayout() {
   // The menu closes on every navigation, including back and forward.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setOpen(false), [location.pathname])
+
+  if (location.pathname === '/') return <Outlet />
+  if (['/enrol', '/patients'].includes(location.pathname)) return <PatientExperience><Outlet /></PatientExperience>
 
   return (
     <div className="flex min-h-dvh flex-col" data-portal="patient">

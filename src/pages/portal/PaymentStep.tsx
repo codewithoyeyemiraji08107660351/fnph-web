@@ -8,7 +8,6 @@ import { formatDateTime, formatNaira, parseServerTime } from '@/lib/format'
 import { usePublicSettings } from '@/lib/hooks/usePublicSettings'
 import { Panel } from '@/components/ui/Page'
 import { Alert } from '@/components/ui/Alert'
-import { TextField } from '@/components/ui/Field'
 import { Spinner } from '@/components/ui/Spinner'
 
 const AUTO_CHECK_MS = 30_000
@@ -52,8 +51,6 @@ export function PaymentStep({ appointment, onPaid }: { appointment?: Appointment
   const history = useQuery({ queryKey: ['my-payments'], queryFn: paymentApi.mine })
   const credit = useQuery({ queryKey: ['my-credit'], queryFn: paymentApi.credit })
   const [payment, setPayment] = useState<PaymentView | null>(null)
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
   const [busy, setBusy] = useState(false)
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -117,7 +114,7 @@ export function PaymentStep({ appointment, onPaid }: { appointment?: Appointment
     setBusy(true)
     setError(null)
     try {
-      setPayment(await paymentApi.initiate({ email: email.trim() || undefined, phone: phone.trim() || undefined }))
+      setPayment(await paymentApi.initiate({}))
       void qc.invalidateQueries({ queryKey: ['my-payments'] })
     } catch (err) {
       setError(toApiError(err).message)
@@ -148,30 +145,22 @@ export function PaymentStep({ appointment, onPaid }: { appointment?: Appointment
   if (history.isLoading) return <Spinner label="Checking your payments" />
 
   return (
-    <Panel title="Pay the consultation fee">
+    <><div className="screen-heading"><span className="eyebrow">Payment confirmation</span><h1>Complete the consultation fee</h1><p>The booking calendar unlocks only when Remita confirms a successful ₦10,000 payment through secure server verification. No card or bank details are collected on this page.</p></div>
+    <div className="payment-layout"><div className="card payment-card"><span className="payment-mark">R</span><h2>FNPH Kaduna telepsychiatry</h2>
       {error && <Alert tone="danger" className="mb-4">{error}</Alert>}
-
-      {!payment ? (
-        <form onSubmit={start} noValidate>
+      {!payment ? <form onSubmit={start} noValidate>
           {credit.data && Number(credit.data.balance) > 0 && (
             <Alert tone="success" className="mb-4">You have {formatNaira(credit.data.balance)} in credit. It is used automatically.</Alert>
           )}
-          <p className="text-sm text-muted">You will get a Remita Retrieval Reference (RRR) to pay with. Add contact details if you want Remita to send you a receipt.</p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <TextField label="Email for the receipt (optional)" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <TextField label="Phone for the receipt (optional)" type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </div>
-          <button type="submit" className="btn btn-primary mt-5" disabled={busy}>
-            {busy ? <Spinner label="Starting" inverted /> : 'Get my payment reference'}
-          </button>
-        </form>
-      ) : paid ? (
+          <div className="payment-total"><span>Consultation fee</span><strong>₦10,000</strong></div><p>Continue through the approved Remita card, transfer or bank-payment options. A webhook and backend status check verify success before date selection is enabled.</p>
+          <button type="submit" className="button primary full" disabled={busy}>{busy ? <Spinner label="Starting" inverted /> : 'Get my Remita payment reference'}</button><small>No payment-card or bank-login information is entered in this portal.</small>
+        </form> : paid ? (
         <div className="space-y-4">
           <Breakdown payment={payment} />
           <div className="flex items-center gap-3 rounded-[14px] bg-mint px-4 py-3 text-sm text-forest-900">
             Payment verified by the server. You can now choose a published date and time.
           </div>
-          {onPaid && <button className="btn btn-primary" onClick={() => onPaid(payment)}>Choose a date and time →</button>}
+          {onPaid && <button className="button primary full" onClick={() => onPaid(payment)}>Choose a date and time →</button>}
         </div>
       ) : payment.status === 'PENDING' ? (
         <div className="space-y-5">
@@ -192,7 +181,7 @@ export function PaymentStep({ appointment, onPaid }: { appointment?: Appointment
               reference is valid until {formatDateTime(payment.expiresAt)} WAT. Calendar selection opens after payment is verified.
             </p>
           </div>
-          <button type="button" className="btn btn-primary w-full sm:w-auto" disabled={checking} onClick={() => check()}>
+          <button type="button" className="button primary full" disabled={checking} onClick={() => check()}>
             {checking ? <Spinner label="Asking Remita" inverted /> : 'I have paid, check now'}
           </button>
           <p className="text-xs text-muted">We also check every half minute while this page is open. Only a confirmation from Remita counts, so returning to this page is not enough on its own.</p>
@@ -202,11 +191,10 @@ export function PaymentStep({ appointment, onPaid }: { appointment?: Appointment
           <Alert tone="danger" title="This payment did not go through">
             {payment.failureReason ?? 'Remita did not confirm it.'} If money left your account, contact <a href={`mailto:${helpdeskEmail}`}>{helpdeskEmail}</a> with reference {payment.reference}.
           </Alert>
-          <button type="button" className="btn btn-primary" onClick={() => setPayment(null)}>
+          <button type="button" className="button primary" onClick={() => setPayment(null)}>
             Start the payment again
           </button>
         </div>
-      )}
-    </Panel>
+      )}</div><aside className="card side-checklist"><h2>Ready for booking</h2><p>Completed before payment:</p><ul><li>First-time agreement and signature</li><li>Non-emergency safety triage</li><li>Consultation reason</li><li>Recent vital signs</li><li>Optional laboratory information</li></ul></aside></div></>
   )
 }

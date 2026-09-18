@@ -5,8 +5,7 @@ import { toApiError } from '@/lib/api/http'
 import type { TriageResult } from '@/lib/api/types'
 import { formatPhone } from '@/lib/format'
 import { usePublicSettings } from '@/lib/hooks/usePublicSettings'
-import { ErrorState, Panel } from '@/components/ui/Page'
-import { Alert } from '@/components/ui/Alert'
+import { ErrorState } from '@/components/ui/Page'
 import { Spinner } from '@/components/ui/Spinner'
 export function StopScreen({ result }: { result: Pick<TriageResult, 'escalation' | 'stopReason'> }) {
   const { emergencyNumber } = usePublicSettings()
@@ -38,49 +37,24 @@ export function TriageStep({ onProceed, onStop }: { onProceed: () => void; onSto
   if (set.isError) return <ErrorState error={set.error} onRetry={() => set.refetch()} />
   const complete = questions.length > 0 && questions.every((q) => answers[q.publicId])
   return (
-    <Panel title="A few questions before you book">
-      <p className="text-sm text-muted">These check that a video consultation is safe for you right now. Answer honestly. There is no wrong answer.</p>
-      {error && <Alert tone="danger" className="mt-4">{error}</Alert>}
-      <ol className="mt-5 space-y-4">
-        {questions.map((q, i) => (
-          <li key={q.publicId}>
-            <fieldset className="rounded-[14px] border border-line p-4">
-              <legend className="px-1 text-sm font-bold">
-                {i + 1}. {q.questionText}
-              </legend>
-              <div className="mt-2 flex gap-3">
-                {(['YES', 'NO'] as const).map((v) => (
-                  <label key={v} className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-[12px] border text-sm font-bold ${answers[q.publicId] === v ? 'border-accent bg-accent-soft text-accent' : 'border-line'}`}>
-                    <input type="radio" className="sr-only" name={q.publicId} checked={answers[q.publicId] === v} onChange={() => setAnswers((a) => ({ ...a, [q.publicId]: v }))} />
-                    {v === 'YES' ? 'Yes' : 'No'}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          </li>
-        ))}
-      </ol>
+    <><div className="screen-heading"><span className="eyebrow">Before each booking</span><h1>Check whether online care is safe today</h1><p>This non-emergency warning appears when you begin a consultation request. Answer every question truthfully; any “Yes” stops online booking and directs you to urgent in-person care.</p></div>
+      <div className="notice danger"><b>Do not use this portal for a psychiatric or medical emergency.</b><span>If you are in immediate danger or cannot participate safely, seek urgent physical help instead of waiting for a video appointment.</span></div>
+      <form className="card triage-card" onSubmit={(event) => { event.preventDefault(); void (async () => {
+        setBusy(true); setError(null)
+        try { const result = await carePathApi.submitTriage(answers); if (result.mayProceed) onProceed(); else onStop(result) }
+        catch (err) { setError(toApiError(err).message) } finally { setBusy(false) }
+      })() }}>
+        {questions.map((q, i) => <fieldset key={q.publicId}><legend>{i + 1}. {q.questionText}</legend>{(['YES', 'NO'] as const).map((v) => <label key={v}><input type="radio" name={q.publicId} checked={answers[q.publicId] === v} onChange={() => setAnswers((a) => ({ ...a, [q.publicId]: v }))} /> {v === 'YES' ? 'Yes' : 'No'}</label>)}</fieldset>)}
+      {error && <div className="triage-result" role="alert">{error}</div>}
+      <div className="actions">
       <button
-        type="button"
-        className="btn btn-primary mt-5"
+        type="submit"
+        className="button primary"
         disabled={!complete || busy}
-        onClick={async () => {
-          setBusy(true)
-          setError(null)
-          try {
-            const result = await carePathApi.submitTriage(answers)
-            if (result.mayProceed) onProceed()
-            else onStop(result)
-          } catch (err) {
-            setError(toApiError(err).message)
-          } finally {
-            setBusy(false)
-          }
-        }}
       >
         {busy ? <Spinner label="Checking" inverted /> : 'Continue'}
       </button>
-    </Panel>
+      </div></form></>
   )
 }
 

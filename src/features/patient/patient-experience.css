@@ -519,19 +519,6 @@ dd { margin: 0; color: var(--navy); font-weight: 800; text-align: right; }
 }
 @scope (.patient-experience) {
   .journey-sidebar a { color: inherit; text-decoration: none; }
-  .journey-form { display:grid; gap:22px; padding:26px; }
-  .journey-form label { display:grid; gap:8px; font-size:.9rem; font-weight:600; }
-  .journey-form input:not([type=radio]):not([type=checkbox]), .journey-form textarea { width:100%; padding:11px; border:1px solid var(--line); border-radius:9px; background:white; }
-  .journey-form fieldset label { display:flex; margin-top:10px; align-items:center; }
-  .journey-form .check-line { display:flex; align-items:start; }
-  .journey-progress { display:flex; gap:10px; list-style:none; padding:0; margin:0 0 25px; flex-wrap:wrap; }
-  .journey-progress li { padding:9px 15px; border-radius:20px; background:#e9eff2; font-size:.8rem; }
-  .journey-progress [aria-current=step] { background:#1b4665; color:white; }
-  .patient-calendar { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:7px; margin:24px 0; text-align:center; }
-  .patient-calendar button { min-height:44px; border:1px solid #b9d1dc; border-radius:9px; background:#e6f2f7; }
-  .patient-calendar button:disabled { color:#a0acb3; background:#f4f6f7; border-color:transparent; }
-  .patient-calendar button[aria-pressed=true] { color:white; background:#1b4665; }
-  .card { padding:24px; }
   .button { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
   .dashboard-actions,.consent-receipt { flex-wrap:wrap; }
   .journey-main { min-width:0; }
