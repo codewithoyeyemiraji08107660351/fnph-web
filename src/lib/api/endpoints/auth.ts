@@ -10,20 +10,75 @@ export function deviceLabel(): string {
 
 export const authApi = {
   login: (username: string, password: string) =>
-    api.post<LoginResponse>('/auth/login', { username: username.trim(), password, deviceLabel: deviceLabel() }),
-  verifyMfa: (mfaToken: string, code: string) => api.post<LoginResponse>('/auth/mfa/verify', { mfaToken, code: code.trim() }),
+    api.post<LoginResponse>('/auth/login', {
+      username: username.trim(),
+      password,
+      deviceLabel: deviceLabel(),
+    }),
+
+  verifyMfa: (mfaToken: string, code: string) =>
+    api.post<LoginResponse>('/auth/mfa/verify', {
+      mfaToken,
+      code: code.trim(),
+    }),
+
   beginMfaEnrolment: (mfaToken: string) =>
-    api.post<MfaEnrolmentResponse>('/auth/mfa/enrol', null, { params: { mfaToken } }),
-  activateMfa: (mfaToken: string, code: string) => api.post<LoginResponse>('/auth/mfa/activate', { mfaToken, code: code.trim() }),
-  logout: (refreshToken: string) => api.post<void>('/auth/logout', { refreshToken }),
-  previewActivation: (token: string) => api.get<ActivationPreview>('/auth/activation', { params: { token } }),
-  completeActivation: (token: string, password: string) => api.post<void>('/auth/activation', { token, password }),
-  forgotPassword: (identifier: string) => api.post<void>('/auth/password/forgot', { identifier: identifier.trim() }),
-  resetPassword: (token: string, password: string) => api.post<void>('/auth/password/reset', { token, password }),
+    api.post<MfaEnrolmentResponse>('/auth/mfa/enrol', null, {
+      params: { mfaToken },
+    }),
+
+  activateMfa: (mfaToken: string, code: string) =>
+    api.post<LoginResponse>('/auth/mfa/activate', {
+      mfaToken,
+      code: code.trim(),
+    }),
+
+  logout: (refreshToken: string) =>
+    api.post<void>('/auth/logout', { refreshToken }),
+
+  previewActivation: (token: string) =>
+    api.get<ActivationPreview>('/auth/activation', {
+      params: { token },
+    }),
+
+  completeActivation: (token: string, password: string) =>
+    api.post<void>('/auth/activation', {
+      token,
+      password,
+    }),
+
+  forgotPassword: (identifier: string) =>
+    api.post<void>('/auth/password/forgot', {
+      identifier: identifier.trim(),
+    }),
+
+  startPatientPasswordReset: (ehrNumber: string) =>
+    api.post<{ token: string; expiresAt: string }>(
+      '/auth/password/patient/forgot',
+      {
+        ehrNumber: ehrNumber.trim(),
+      },
+    ),
+
+  resetPassword: (token: string, password: string) =>
+    api.post<void>('/auth/password/reset', {
+      token,
+      password,
+    }),
+
   changePassword: (currentPassword: string, newPassword: string) =>
-    api.post<void>('/auth/password/change', { currentPassword, newPassword }),
+    api.post<void>('/auth/password/change', {
+      currentPassword,
+      newPassword,
+    }),
+
   me: () => api.get<Principal>('/me'),
+
   sessions: () => api.list<SessionItem>('/sessions'),
-  revokeSession: (publicId: string) => api.delete<void>(`/sessions/${encodeURIComponent(publicId)}`),
-  revokeAllSessions: () => api.delete<void>('/sessions'),
+
+  revokeSession: (publicId: string) =>
+    api.delete<void>(`/sessions/${encodeURIComponent(publicId)}`),
+
+  revokeAllSessions: () =>
+    api.delete<void>('/sessions'),
 }
