@@ -119,7 +119,13 @@ export function SignInPanel({ portal }: { portal: Portal }) {
     try {
       await fn()
     } catch (err) {
-      setError(toApiError(err).message)
+      const apiError = toApiError(err)
+      const incorrect = apiError.status === 401 && /incorrect|authentication failed/i.test(apiError.message)
+      setError(incorrect
+        ? portal === 'patient'
+          ? 'The EHR number or password is incorrect. Check the password and try again, or reset it below.'
+          : 'The username, email, or password is incorrect. Check the password and try again.'
+        : apiError.message)
     } finally {
       setBusy(false)
     }

@@ -14,7 +14,7 @@ import { ReasonField, TextField } from '@/components/ui/Field'
 import { Alert } from '@/components/ui/Alert'
 import { useToast } from '@/components/ui/Toast'
 
-type ActionKey = 'resend' | 'resetPassword' | 'resetMfa' | 'revokeSessions' | 'deactivate'
+type ActionKey = 'resend' | 'resetPassword' | 'revokeSessions' | 'deactivate'
 
 interface ActionSpec {
   title: string
@@ -33,13 +33,6 @@ const ACTIONS: Record<ActionKey, ActionSpec> = {
     confirm: 'Send reset link',
     reasonMin: 10,
     permission: 'user.reset_password',
-  },
-  resetMfa: {
-    title: 'Reset authenticator',
-    body: 'Removes the user’s second factor and signs them out everywhere. They set up a new authenticator on their next sign in. Confirm their identity first, by phone or in person.',
-    confirm: 'Reset authenticator',
-    danger: true,
-    permission: 'mfa.reset',
   },
   revokeSessions: { title: 'Sign out all devices', body: 'Every active session for this user ends immediately.', confirm: 'Sign out all devices', danger: true, permission: 'session.revoke' },
   deactivate: {
@@ -252,7 +245,6 @@ export function UserDetail() {
       switch (key) {
         case 'resend': return adminApi.users.resendInvitation(userId)
         case 'resetPassword': return adminApi.users.resetPassword(userId, reason.trim())
-        case 'resetMfa': return adminApi.users.resetMfa(userId)
         case 'revokeSessions': return adminApi.users.revokeSessions(userId)
         case 'deactivate': return adminApi.users.deactivate(userId, reason.trim())
       }
@@ -276,7 +268,6 @@ export function UserDetail() {
   const available = (Object.keys(ACTIONS) as ActionKey[]).filter((k) => {
     if (!can(ACTIONS[k].permission)) return false
     if (k === 'resend') return u.status === 'INVITED'
-    if (k === 'resetMfa') return Boolean(u.mfaEnabled)
     if (k === 'deactivate') return u.status !== 'DEACTIVATED' && !isSelf
     if (k === 'resetPassword') return u.status === 'ACTIVE'
     return u.status !== 'DEACTIVATED'
@@ -295,7 +286,6 @@ export function UserDetail() {
             <span>{u.username}</span>
             <StatusBadge status={u.status} />
             {u.accountLocked && <Badge tone="red">Locked after failed sign-ins</Badge>}
-            {u.mfaEnabled ? <Badge tone="green">Authenticator on</Badge> : <Badge tone="gold">No authenticator</Badge>}
           </div>
         </div>
         {can('supervision.view_as') && !isSelf && u.status === 'ACTIVE' && !u.roles.includes(CENTRAL_ADMINISTRATOR) && (

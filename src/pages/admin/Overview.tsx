@@ -22,7 +22,6 @@ export function Overview() {
   const active = count((u) => u.status === 'ACTIVE')
   const invited = count((u) => u.status === 'INVITED')
   const locked = count((u) => Boolean(u.accountLocked))
-  const noMfa = count((u) => u.status === 'ACTIVE' && !u.mfaEnabled)
 
   const highlights = (config.data ?? []).filter((c) => HIGHLIGHT_KEYS.includes(c.key)).sort((a, b) => HIGHLIGHT_KEYS.indexOf(a.key) - HIGHLIGHT_KEYS.indexOf(b.key))
   const display = (key: string, value: string) =>
@@ -42,11 +41,10 @@ export function Overview() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Active accounts" value={users.isLoading ? '…' : active} note={list.length >= 200 ? 'First 200 shown' : `${list.length} total`} />
         <Stat label="Invitations pending" value={users.isLoading ? '…' : invited} tone={invited ? 'warn' : 'default'} note="Awaiting password setup" />
         <Stat label="Locked accounts" value={users.isLoading ? '…' : locked} tone={locked ? 'alarm' : 'default'} note="After failed sign-ins" />
-        <Stat label="Active without MFA" value={users.isLoading ? '…' : noMfa} tone={noMfa ? 'warn' : 'default'} note="Set up on next sign in" />
         <Stat
           label="Patient enrolment"
           value={health.data ? (health.data.enrolmentAvailable === false ? 'Down' : 'Open') : health.isLoading ? '…' : 'Unknown'}

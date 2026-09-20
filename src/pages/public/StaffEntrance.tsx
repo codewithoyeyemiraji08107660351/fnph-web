@@ -26,9 +26,9 @@ export function StaffEntrance() {
         <div className="rounded-[18px] bg-white p-5">
           <p className="font-bold text-navy">
             <i aria-hidden className="bi bi-shield-check mr-2" />
-            Two-step sign in
+            Simple sign in
           </p>
-          <p className="mt-1.5 text-sm text-muted">Every staff account uses an authenticator app. You set it up once, on your first sign in.</p>
+          <p className="mt-1.5 text-sm text-muted">Use the username and password issued through your account invitation.</p>
         </div>
         <div className="rounded-[18px] bg-white p-5">
           <p className="font-bold text-navy">

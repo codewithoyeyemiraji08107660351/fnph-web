@@ -112,7 +112,6 @@ export function Users() {
                     <td>
                       <div className="flex flex-wrap gap-1.5">
                         {u.accountLocked && <Badge tone="red">Locked</Badge>}
-                        {u.mfaEnabled ? <Badge tone="green">MFA on</Badge> : u.status === 'ACTIVE' ? <Badge tone="gold">No MFA</Badge> : null}
                       </div>
                     </td>
                     <td className="text-sm whitespace-nowrap text-muted">{u.lastLoginAt ? formatRelative(u.lastLoginAt) : 'Never'}</td>

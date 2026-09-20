@@ -68,7 +68,7 @@ export function Activate() {
         </span>
         <h1 className="mt-4 text-2xl font-extrabold">Your account is ready</h1>
         <p className="mt-2 text-sm text-muted">
-          Sign in with <strong className="text-ink">{preview.data?.username}</strong> and your new password. You will set up your authenticator app on this first sign in, so keep your phone nearby.
+          Sign in with <strong className="text-ink">{preview.data?.username}</strong> and your new password.
         </p>
         <Link to="/staff" className="btn btn-primary mt-6 w-full no-underline">Sign in now</Link>
       </AuthCard>

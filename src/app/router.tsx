@@ -7,6 +7,7 @@ import { RequireAuth, RequirePermission, RequireRole, DashboardRedirect } from '
 import { CENTRAL_ADMINISTRATOR, ROLES } from '@/lib/auth/roles'
 import { Landing } from '@/pages/public/Landing'
 import { PatientConsent } from '@/features/patient/PatientConsent'
+import { PatientOnboarding } from '@/features/patient/PatientOnboarding'
 import { PatientProfile } from '@/features/patient/PatientProfile'
 import { PatientEntrance } from '@/pages/public/PatientEntrance'
 import { StaffEntrance } from '@/pages/public/StaffEntrance'
@@ -109,13 +110,15 @@ const CENTRE_ROLES = ['CENTRE_HUB_COORDINATOR', 'CENTRE_ASSISTANT_COORDINATOR', 
 const phase2Routes = [
   workspace(['PATIENT'], [
     { index: true, element: <PortalHome /> },
+    { path: 'onboarding', element: <PatientOnboarding /> },
     { path: 'consent', element: <PatientConsent /> },
     { path: 'profile', element: <PatientProfile /> },
     { path: 'booking', element: gated('slot.hold', <BookingFlow />) },
     { path: 'payment', element: <PaymentReturn /> },
     { path: 'payment/return', element: <PaymentReturn /> },
-    { path: 'appointments', element: <Appointments /> },
-    { path: 'appointments/:appointmentId', element: <Appointments /> },
+      { path: 'appointments', element: <Appointments /> },
+      { path: 'appointments/:appointmentId', element: <Appointments /> },
+      { path: 'history', element: <Appointments /> },
     { path: 'documents', element: gated('document.read_own', <Documents />) },
     { path: 'consultations/:appointmentId', element: gated('consultation.join_as_patient', <PatientRoom />) },
     { path: '*', element: <Navigate to="/portal" replace /> },

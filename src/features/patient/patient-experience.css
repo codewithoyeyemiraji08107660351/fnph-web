@@ -524,3 +524,112 @@ dd { margin: 0; color: var(--navy); font-weight: 800; text-align: right; }
   .journey-main { min-width:0; }
   @media(max-width:600px) { .header-right { flex-wrap:wrap; justify-content:flex-end; } .header-help { display:none; } .site-header { padding:10px; gap:8px; } }
 }
+
+@scope (.patient-authenticated) {
+  :scope { min-height: 100dvh; background: #eef4ef; }
+  .prototype-ribbon { min-height: 34px; justify-content: flex-start; padding: 6px 14px; background: #103a2d; color: #cfe0d7; }
+  .prototype-ribbon b { color: #fff; }
+  .patient-emergency { min-height: 52px; justify-content: space-between; padding: 9px 16px; background: #fff9e9; }
+  .patient-emergency > span { flex: 1 1 560px; }
+  .patient-emergency > div { flex: 0 1 auto; gap: 0; }
+  .patient-emergency a { padding: 0 14px; border-left: 1px solid #ded5bd; color: #675a45; font-weight: 500; text-decoration: none; }
+  .patient-emergency a b { margin-left: 5px; color: #463b27; }
+  .patient-app-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: calc(100dvh - 86px); }
+  .patient-app-sidebar { position: sticky; top: 0; height: calc(100dvh - 86px); display: flex; flex-direction: column; overflow-y: auto; background: linear-gradient(180deg, #075a3c, #024a32); color: #fff; }
+  .patient-side-brand { display: flex; align-items: center; gap: 12px; min-height: 86px; padding: 15px 16px; border-bottom: 1px solid rgba(255,255,255,.12); color: #fff; text-decoration: none; }
+  .patient-side-brand img { width: 49px; height: 49px; border-radius: 50%; background: #fff; object-fit: contain; }
+  .patient-side-brand span { display: grid; line-height: 1.25; }
+  .patient-side-brand b { font-size: .95rem; }
+  .patient-side-brand small { margin-top: 4px; color: #c9ded5; font-size: .72rem; }
+  .patient-app-sidebar nav { padding: 20px 8px; }
+  .patient-app-sidebar ul { list-style: none; margin: 0; padding: 0; }
+  .patient-app-sidebar li { margin: 3px 0; }
+  .patient-app-sidebar nav a { display: flex; align-items: center; gap: 11px; min-height: 46px; padding: 10px 12px; border-radius: 10px; color: #e8f2ed; text-decoration: none; font-size: .84rem; font-weight: 800; }
+  .patient-app-sidebar nav a i { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 6px; background: rgba(255,255,255,.09); font-size: .8rem; }
+  .patient-app-sidebar nav a:hover, .patient-app-sidebar nav a.active { background: rgba(255,255,255,.14); color: #fff; }
+  .patient-side-bottom { display: grid; gap: 8px; margin-top: auto; padding: 8px; }
+  .patient-help { display: grid; gap: 7px; padding: 15px; border: 1px solid rgba(255,255,255,.15); border-radius: 12px; background: rgba(255,255,255,.08); }
+  .patient-help b { font-size: .8rem; }
+  .patient-help span { color: #c9ded5; font-size: .7rem; line-height: 1.45; }
+  .patient-help a { color: #fff; font-size: .72rem; font-weight: 800; }
+  .patient-side-bottom > button { border: 0; padding: 10px 2px; background: transparent; color: #fff; text-align: left; font-size: .76rem; font-weight: 800; }
+  .patient-app-content { min-width: 0; }
+  .patient-context-header { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px 20px; border-bottom: 1px solid #dce4de; background: #fff; }
+  .patient-context-header > div:first-child { display: grid; }
+  .patient-context-header > div:first-child span { color: #08724e; font-size: .66rem; font-weight: 900; letter-spacing: .08em; }
+  .patient-context-header > div:first-child b { color: #172e26; font-size: .92rem; }
+  .patient-context-user { display: flex; align-items: center; gap: 10px; }
+  .patient-context-user > span:last-child { display: grid; min-width: 130px; }
+  .patient-context-user > span:last-child b { color: #22352e; font-size: .76rem; }
+  .patient-context-user > span:last-child small { color: #75847e; font-size: .67rem; }
+  .patient-context-avatar { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 50%; background: #e5f3eb; color: #08724e; font-size: .72rem; font-weight: 900; }
+  .patient-app-main { width: 100%; max-width: none; padding: 22px 24px 60px; }
+  .patient-app-main > .stage-header { margin: 0; padding: 0 0 12px; }
+  .patient-record-banner { display: none; }
+  .booking-progress { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 9px; margin: 0 0 15px; padding: 11px 14px; list-style: none; border: 1px solid #d7e0da; border-radius: 13px; background: #fff; }
+  .booking-progress li { position: relative; display: flex; align-items: center; gap: 7px; min-height: 30px; color: #86928d; font-size: .68rem; }
+  .booking-progress li::after { content: ""; position: absolute; right: -5px; bottom: -5px; left: 34px; height: 1px; background: #d6dfd9; }
+  .booking-progress li:last-child::after { display: none; }
+  .booking-progress li > span { display: grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%; background: #edf1ee; color: #7e8b85; font-weight: 900; }
+  .booking-progress li > i { display: none; }
+  .booking-progress li.complete { color: #08724e; }
+  .booking-progress li.complete > span { background: #08724e; color: #fff; }
+  .booking-progress li.complete::after { background: #9bc9b4; }
+  .booking-progress li.current { color: #20342c; }
+  .booking-progress li.current > span { background: #f5d20b; color: #26362e; }
+  .booking-completions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-bottom: 15px; }
+  .booking-completions > div { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 10px 14px; border: 1px solid #c8e1d4; border-radius: 11px; background: #eaf5ef; }
+  .booking-completions > div > span { display: grid; place-items: center; width: 27px; height: 27px; flex: none; border-radius: 50%; background: #08724e; color: #fff; font-weight: 900; }
+  .booking-completions p { display: grid; margin: 0; }
+  .booking-completions b { color: #23352e; font-size: .72rem; }
+  .booking-completions small { color: #6c7b75; font-size: .65rem; }
+  .booking-screen-heading { margin: 0 0 15px; max-width: none; }
+  .booking-screen-heading h1 { margin: 4px 0 4px; font-size: clamp(1.65rem,2.3vw,2.3rem); }
+  .booking-screen-heading p { margin: 0; font-size: .83rem; }
+  .reference-booking-layout { grid-template-columns: minmax(0,1fr) 315px; gap: 14px; }
+  .reference-calendar-card, .reference-booking-summary { border-radius: 14px; box-shadow: none; }
+  .reference-calendar-card { padding: 17px; }
+  .booking-section-title { display: flex; align-items: center; gap: 10px; }
+  .booking-section-title > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: #e8f4ed; color: #08724e; font-size: .65rem; font-weight: 900; }
+  .booking-section-title h2 { margin: 0; font-size: .95rem; }
+  .booking-section-title small { margin-left: auto; color: #718079; font-size: .66rem; }
+  .approved-date-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin: 15px 0 10px; }
+  .approved-date-grid button { display: grid; gap: 1px; min-height: 78px; padding: 10px 12px; border: 1px solid #d4ddd8; border-radius: 10px; background: #fff; color: #263b32; text-align: left; }
+  .approved-date-grid button:hover, .approved-date-grid button[aria-pressed="true"] { border: 2px solid #08724e; padding: 9px 11px; background: #edf7f1; }
+  .approved-date-grid small { color: #08724e; text-transform: uppercase; font-size: .61rem; font-weight: 900; }
+  .approved-date-grid b { font-size: .95rem; }
+  .approved-date-grid span { color: #74817c; font-size: .63rem; }
+  .selected-date-note { padding: 8px 11px; border-radius: 7px; background: #f1f4f2; color: #6b7973; font-size: .66rem; }
+  .time-title { margin-top: 17px; padding-top: 15px; border-top: 1px solid #e1e6e3; }
+  .available-dot { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: #08724e; }
+  .reference-calendar-card .slot-grid { margin-top: 13px; }
+  .reference-booking-summary { top: 18px; padding: 18px; }
+  .selection-date { display: flex; align-items: center; gap: 12px; margin: 15px 0; }
+  .selection-date > span { display: grid; place-items: center; width: 54px; height: 54px; flex: none; border-radius: 50%; background: #eaf5ef; color: #08724e; font-size: 1.25rem; font-weight: 900; }
+  .selection-date > div { display: grid; }
+  .selection-date b { font-size: .78rem; }
+  .selection-date small { color: #718079; font-size: .64rem; line-height: 1.35; }
+  .assignment-note { display: grid; gap: 3px; padding: 12px; border-radius: 9px; background: #e9f1f7; }
+  .assignment-note b { color: #24506c; font-size: .72rem; }
+  .assignment-note span { color: #557181; font-size: .64rem; line-height: 1.4; }
+  @media (max-width: 980px) {
+    .patient-app-shell { grid-template-columns: 190px minmax(0,1fr); }
+    .patient-context-user > span:last-child { display: none; }
+    .reference-booking-layout { grid-template-columns: minmax(0,1fr); }
+    .reference-booking-summary { position: static; }
+  }
+  @media (max-width: 720px) {
+    .patient-emergency > div { display: none; }
+    .patient-app-shell { display: block; }
+    .patient-app-sidebar { position: static; width: 100%; height: auto; overflow: visible; }
+    .patient-side-brand, .patient-help, .patient-side-bottom > button { display: none; }
+    .patient-app-sidebar nav { padding: 7px; overflow-x: auto; }
+    .patient-app-sidebar ul { display: flex; min-width: max-content; }
+    .patient-app-sidebar nav a { min-height: 40px; padding: 7px 10px; font-size: .7rem; }
+    .patient-context-header { min-height: 62px; padding: 8px 12px; }
+    .patient-app-main { padding: 15px 10px 50px; }
+    .booking-progress { overflow-x: auto; grid-template-columns: repeat(6,120px); }
+    .booking-completions { grid-template-columns: minmax(0,1fr); }
+    .approved-date-grid { grid-template-columns: minmax(0,1fr); }
+  }
+}

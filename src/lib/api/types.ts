@@ -336,13 +336,11 @@ export type Money = string | number
 /** ehr/api/EnrolmentLookupResponse */
 export interface EnrolmentLookup {
   verificationPublicId: string
-  /** Withheld when only an EHR number was given, so a guessed number reveals nobody. */
-  fullName?: string | null
+  ehrNumber: string
+  fullName: string
   dateOfBirthMasked?: string | null
-  /** Where the code went: a masked email or phone number. */
-  phoneMasked: string
   clinic?: string | null
-  codeExpiresAt: IsoDateTime
+  setupExpiresAt: IsoDateTime
   recordsAsAt: string
   recordsAgeInDays: number
 }
@@ -407,18 +405,27 @@ export interface AppointmentHistory {
 export interface PaymentView {
   publicId: string
   reference: string
-  rrr?: string
-  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REVERSED' | 'REFUNDED' | 'UNMATCHED'
-  amount: Money
-  creditApplied: Money
-  payableAmount: Money
+  rrr?: string | null
+  paymentLink?: string | null
+  status: string
+  amount: string
+  creditApplied: string
+  payableAmount: string
   currency: string
-  initiatedAt: IsoDateTime
-  verifiedAt?: IsoDateTime
-  expiresAt?: IsoDateTime
-  failureReason?: string
+  initiatedAt: string
+  verifiedAt?: string | null
+  expiresAt: string
+  failureReason?: string | null
   amountMismatch: boolean
   usedForBooking: boolean
+}
+
+export interface RemitaCheckout {
+  url: string
+  merchantId: string
+  rrr: string
+  hash: string
+  responseUrl: string
 }
 
 /** payment/api/CreditBalanceResponse */
@@ -829,4 +836,14 @@ export interface CentreApprovalRow {
   centrePatientId?: string
   appointmentDateTime: IsoDateTime
   referralReason?: string
+}
+
+/** TriageController#mine. Newest response is first. */
+export interface TriageHistoryItem {
+  publicId: string
+  version: string
+  outcome: 'PROCEED' | 'STOPPED' | string
+  stopReason?: string
+  escalation?: string
+  submittedAt: IsoDateTime
 }

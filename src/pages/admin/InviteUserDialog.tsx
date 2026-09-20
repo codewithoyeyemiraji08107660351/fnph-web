@@ -123,11 +123,6 @@ export function InviteUserDialog({ open, onClose }: { open: boolean; onClose: ()
         <div className="sm:col-span-2">
           <ReasonField value={form.reason} onChange={(v) => setForm((f) => ({ ...f, reason: v }))} min={10} error={errors.reason} label="Reason for creating this account" />
         </div>
-        {selectedRole && selectedRole.scope !== 'PATIENT' && (
-          <p className="text-xs text-muted sm:col-span-2">
-            <i aria-hidden className="bi bi-shield-lock mr-1" /> This account must set up an authenticator app on first sign in.
-          </p>
-        )}
       </form>
     </Dialog>
   )

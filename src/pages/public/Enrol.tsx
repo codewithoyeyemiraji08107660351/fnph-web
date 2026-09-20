@@ -1,16 +1,21 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { enrolmentApi } from '@/lib/api/endpoints/patient'
 import { toApiError } from '@/lib/api/http'
 import type { EnrolmentLookup } from '@/lib/api/types'
 import { formatCalendarDate, formatPhone, formatTime } from '@/lib/format'
-import { passwordProblems } from '@/lib/passwords'
 import { useDocumentTitle } from '@/lib/hooks/useDocumentTitle'
 import { usePublicSettings } from '@/lib/hooks/usePublicSettings'
 import { AuthCard } from '@/pages/auth/AuthCard'
 import { Alert } from '@/components/ui/Alert'
-import { PasswordField, SelectField, TextAreaField, TextField } from '@/components/ui/Field'
+import {
+  PasswordField,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from '@/components/ui/Field'
 import { Spinner } from '@/components/ui/Spinner'
+import { PatientRecordBanner } from '@/features/patient/PatientRecordBanner'
 
 type Step = 'lookup' | 'confirm' | 'done' | 'help' | 'helpSent'
 
@@ -37,16 +42,24 @@ function HelpForm({
 
   const set =
     (k: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    (
+      e: ChangeEvent<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >,
+    ) =>
       setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+
     if (!form.ehrNumber.trim() || !form.fullName.trim()) {
       return setError('Enter your hospital number and full name.')
     }
+
     if (!form.phoneNumber.trim() && !form.email.trim()) {
-      return setError('Give a phone number or email so the hospital can reach you.')
+      return setError(
+        'Give a phone number or email so the hospital can reach you.',
+      )
     }
 
     setBusy(true)
@@ -65,10 +78,14 @@ function HelpForm({
       onSent()
     } catch (err) {
       const e = toApiError(err)
+
       // The request is accepted the same way whether or not the record exists.
       // Only a transport or validation problem is worth showing.
-      if (e.isNetworkError || e.status === 400 || e.status === 429) setError(e.message)
-      else onSent()
+      if (e.isNetworkError || e.status === 400 || e.status === 429) {
+        setError(e.message)
+      } else {
+        onSent()
+      }
     } finally {
       setBusy(false)
     }
@@ -77,10 +94,12 @@ function HelpForm({
   return (
     <form onSubmit={submit} noValidate>
       <span className="kicker">Manual check</span>
-      <h1 className="text-2xl font-extrabold">Ask the hospital to check your record</h1>
+      <h1 className="text-2xl font-extrabold">
+        Ask the hospital to check your record
+      </h1>
       <p className="mt-2 text-sm text-muted">
-        If you registered recently or your details have changed, the online list may not
-        match yet. Records staff check by hand and contact you.
+        If you registered recently or your details have changed, the online list
+        may not match yet. Records staff check by hand and contact you.
       </p>
 
       {error && (
@@ -142,10 +161,18 @@ function HelpForm({
         />
       </div>
 
-      <button type="submit" className="btn btn-primary mt-6 w-full" disabled={busy}>
+      <button
+        type="submit"
+        className="btn btn-primary mt-6 w-full"
+        disabled={busy}
+      >
         {busy ? <Spinner label="Sending" inverted /> : 'Send request'}
       </button>
-      <button type="button" className="btn btn-quiet mt-2 w-full" onClick={onBack}>
+      <button
+        type="button"
+        className="btn btn-quiet mt-2 w-full"
+        onClick={onBack}
+      >
         Back
       </button>
     </form>
@@ -154,31 +181,43 @@ function HelpForm({
 
 export function Enrol() {
   useDocumentTitle('Set up your patient account')
-  const { emergencyNumber } = usePublicSettings()
 
+  const { emergencyNumber } = usePublicSettings()
   const [step, setStep] = useState<Step>('lookup')
   const [ehrNumber, setEhrNumber] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [match, setMatch] = useState<EnrolmentLookup | null>(null)
-  const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [alreadyEnrolled, setAlreadyEnrolled] = useState(false)
 
   const lookup = async (e: FormEvent) => {
     e.preventDefault()
-    if (!ehrNumber.trim()) return setError('Enter the hospital number on your card.')
+
+    if (!ehrNumber.trim()) {
+      return setError('Enter the hospital number on your card.')
+    }
 
     setBusy(true)
     setError(null)
+    setAlreadyEnrolled(false)
 
     try {
-      setMatch(await enrolmentApi.lookup({ ehrNumber: ehrNumber.trim(), dateOfBirth }))
+      setMatch(
+        await enrolmentApi.lookup({
+          ehrNumber: ehrNumber.trim(),
+          dateOfBirth,
+        }),
+      )
       setStep('confirm')
     } catch (err) {
-      // The server gives one answer for every mismatch, so this page does too.
-      setError(toApiError(err).message)
+      const apiError = toApiError(err)
+      setError(apiError.message)
+      setAlreadyEnrolled(
+        /already has an account|already enrolled/i.test(apiError.message),
+      )
     } finally {
       setBusy(false)
     }
@@ -187,26 +226,31 @@ export function Enrol() {
   const complete = async (e: FormEvent) => {
     e.preventDefault()
     if (!match) return
-    if (!/^\d{6}$/.test(code.trim())) return setError('The code is six digits.')
 
-    const problem = passwordProblems(password, confirm, 12, [
-      ehrNumber,
-      ...(match.fullName ?? '').split(' ').filter(Boolean),
-    ])
-    if (problem) return setError(problem)
+    if (password.length < 8) {
+      return setError('Use at least 8 characters.')
+    }
+
+    if (password !== confirm) {
+      return setError('The two passwords do not match.')
+    }
 
     setBusy(true)
     setError(null)
+    setAlreadyEnrolled(false)
 
     try {
       await enrolmentApi.complete({
         verificationPublicId: match.verificationPublicId,
-        code: code.trim(),
         password,
       })
       setStep('done')
     } catch (err) {
-      setError(toApiError(err).message)
+      const apiError = toApiError(err)
+      setError(apiError.message)
+      setAlreadyEnrolled(
+        /already has an account|already enrolled/i.test(apiError.message),
+      )
     } finally {
       setBusy(false)
     }
@@ -228,8 +272,9 @@ export function Enrol() {
             <span className="kicker">FNPH KADUNA TELEPSYCHIATRY</span>
             <h1>Follow-up care, from a calm place of your choosing.</h1>
             <p>
-              Your health is our concern. Use your existing hospital EHR number to enrol,
-              complete the safety and privacy checks, then request a secure consultation.
+              Your health is our concern. Use your existing hospital EHR number to
+              enrol, complete the safety and privacy checks, then request a secure
+              consultation.
             </p>
             <div className="eligibility-badges">
               <span>✓ Existing patients only</span>
@@ -248,8 +293,8 @@ export function Enrol() {
             <span className="eyebrow">Step one · hospital record</span>
             <h2>Enter the EHR number on your card</h2>
             <p>
-              We first match the number to a verified existing FNPH record. You cannot
-              create a new hospital record through this service.
+              We first match the number to a verified existing FNPH record. You
+              cannot create a new hospital record through this service.
             </p>
 
             <label htmlFor="ehr-lookup">Existing FNPH EHR number</label>
@@ -259,7 +304,6 @@ export function Enrol() {
                 inputMode="numeric"
                 autoComplete="off"
                 maxLength={50}
-                placeholder="Enter EHR number here..."
                 value={ehrNumber}
                 onChange={(e) => setEhrNumber(e.target.value)}
                 required
@@ -270,22 +314,34 @@ export function Enrol() {
             </div>
 
             <div className="form-foot">
-              {/* <button
+              <button
                 className="text-button"
                 type="button"
-                onClick={() => setEhrNumber('204815')}
+                onClick={() => setStep('help')}
               >
-                Use sample EHR 204815
-              </button> */}
-              <button className="text-button" type="button" onClick={() => setStep('help')}>
                 My card number is not recognised
               </button>
             </div>
 
             {error && (
-              <p className="form-error" role="alert">
+              <Alert tone="danger" className="mt-4">
                 {error}
-              </p>
+                {alreadyEnrolled && (
+                  <span className="mt-2 block">
+                    <Link className="font-bold underline" to="/patients">
+                      Sign in to your account
+                    </Link>{' '}
+                    or{' '}
+                    <Link
+                      className="font-bold underline"
+                      to="/forgot-password?from=patient"
+                    >
+                      reset your password
+                    </Link>
+                    .
+                  </span>
+                )}
+              </Alert>
             )}
           </form>
 
@@ -296,16 +352,12 @@ export function Enrol() {
             </div>
             <h2>See how telepsychiatry works</h2>
             <p>
-              Learn about enrolment, booking, the private consultation room and follow-up
-              care.
+              Learn about enrolment, booking, the private consultation room and
+              follow-up care.
             </p>
             <a className="button outline" href="#patient-main">
               View patient journey
             </a>
-            <small>
-              The approved hospital demonstration video, captions and transcript will be
-              added before launch.
-            </small>
           </div>
         </div>
       </>
@@ -318,10 +370,13 @@ export function Enrol() {
         <>
           <h1 className="text-2xl font-extrabold">Request received</h1>
           <p className="mt-2 text-sm text-muted">
-            Records staff will check your details and contact you. No account is created
-            until your record is confirmed.
+            Records staff will check your details and contact you. No account is
+            created until your record is confirmed.
           </p>
-          <Link to="/patients" className="btn btn-secondary mt-6 w-full no-underline">
+          <Link
+            to="/patients"
+            className="btn btn-secondary mt-6 w-full no-underline"
+          >
             Back to patient services
           </Link>
         </>
@@ -339,39 +394,39 @@ export function Enrol() {
           <h1 className="mt-4 text-2xl font-extrabold">Your account is ready</h1>
           <p className="mt-2 text-sm text-muted">
             Sign in with your hospital number{' '}
-            <strong className="text-ink">{ehrNumber.trim()}</strong> and the password you
-            just chose.
+            <strong className="text-ink">{ehrNumber.trim()}</strong> and the
+            password you just chose.
           </p>
-          <Link to="/patients" className="btn btn-primary mt-6 w-full no-underline">
+          <Link
+            to="/patients"
+            className="btn btn-primary mt-6 w-full no-underline"
+          >
             Sign in
           </Link>
         </>
       ) : step === 'confirm' && match ? (
         <form onSubmit={complete} noValidate>
           <span className="kicker">Step 2 of 2</span>
-          <h1 className="text-2xl font-extrabold">Enter the code we sent</h1>
+          <h1 className="text-2xl font-extrabold">Create your password</h1>
 
-          {match.fullName && (
-            <dl className="mt-4 rounded-[14px] bg-soft p-4 text-sm">
-              <dt className="text-xs text-muted">Name on the hospital record</dt>
-              <dd className="font-display text-lg font-extrabold">{match.fullName}</dd>
-              {match.dateOfBirthMasked && (
-                <dd className="text-muted">
-                  Born {match.dateOfBirthMasked}.
-                  {match.clinic ? ` ${match.clinic} clinic.` : ''}
-                </dd>
-              )}
-            </dl>
-          )}
+          <div className="mt-4">
+            <PatientRecordBanner
+              ehrNumber={match.ehrNumber}
+              fullName={match.fullName}
+              dateOfBirth={match.dateOfBirthMasked}
+              clinic={match.clinic}
+              stage="Step 2 of 2"
+            />
+          </div>
 
           <p className="mt-4 text-sm">
-            We sent a six-digit code to <strong>{match.phoneMasked}</strong>, the contact on
-            your hospital record. It expires at {formatTime(match.codeExpiresAt)} WAT.
+            Choose the password you will use with your EHR number. This setup step
+            expires at {formatTime(match.setupExpiresAt)} WAT.
           </p>
           <p className="mt-2 text-xs text-muted">
-            The hospital record list is dated {formatCalendarDate(match.recordsAsAt)}. If
-            your email or phone changed since then, the code went to the old one; ask for a
-            manual check below.
+            The hospital record list is dated{' '}
+            {formatCalendarDate(match.recordsAsAt)}. If the displayed details are
+            not yours, start again or ask the hospital for help.
           </p>
           <p className="mt-2 text-sm text-muted">
             Wrong number?{' '}
@@ -380,7 +435,6 @@ export function Enrol() {
               className="font-bold text-accent"
               onClick={() => {
                 setMatch(null)
-                setCode('')
                 setStep('lookup')
               }}
             >
@@ -391,23 +445,28 @@ export function Enrol() {
           {error && (
             <Alert tone="danger" className="mt-4">
               {error}
+              {alreadyEnrolled && (
+                <span className="mt-2 block">
+                  <Link className="font-bold underline" to="/patients">
+                    Sign in to your account
+                  </Link>{' '}
+                  or{' '}
+                  <Link
+                    className="font-bold underline"
+                    to="/forgot-password?from=patient"
+                  >
+                    reset your password
+                  </Link>
+                  .
+                </span>
+              )}
             </Alert>
           )}
 
-          <TextField
-            wrapperClassName="mt-5"
-            label="Six-digit code"
-            maxLength={6}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            required
-          />
           <PasswordField
-            wrapperClassName="mt-4"
+            wrapperClassName="mt-5"
             label="Choose a password"
-            hint="At least 12 characters. A short phrase is easy to remember."
+            hint="At least 8 characters."
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -422,11 +481,23 @@ export function Enrol() {
             required
           />
 
-          <button type="submit" className="btn btn-primary mt-6 w-full" disabled={busy}>
-            {busy ? <Spinner label="Setting up" inverted /> : 'Create my account'}
+          <button
+            type="submit"
+            className="btn btn-primary mt-6 w-full"
+            disabled={busy}
+          >
+            {busy ? (
+              <Spinner label="Setting up" inverted />
+            ) : (
+              'Create my account'
+            )}
           </button>
-          <button type="button" className="btn btn-quiet mt-2 w-full" onClick={() => setStep('help')}>
-            The code did not arrive
+          <button
+            type="button"
+            className="btn btn-quiet mt-2 w-full"
+            onClick={() => setStep('help')}
+          >
+            I need help with my record
           </button>
         </form>
       ) : (
@@ -434,13 +505,29 @@ export function Enrol() {
           <span className="kicker">Existing FNPH Kaduna patients</span>
           <h1 className="text-2xl font-extrabold">Set up your account</h1>
           <p className="mt-2 text-sm text-muted">
-            Enter the hospital number printed on your card. We send a code to the email or
-            phone the hospital has for you. New patients must be seen at the hospital first.
+            Enter the hospital number printed on your card. When the record
+            matches, you only need to create a password. New patients must be
+            seen at the hospital first.
           </p>
 
           {error && (
             <Alert tone="danger" className="mt-4">
               {error}
+              {alreadyEnrolled && (
+                <span className="mt-2 block">
+                  <Link className="font-bold underline" to="/patients">
+                    Sign in to your account
+                  </Link>{' '}
+                  or{' '}
+                  <Link
+                    className="font-bold underline"
+                    to="/forgot-password?from=patient"
+                  >
+                    reset your password
+                  </Link>
+                  .
+                </span>
+              )}
             </Alert>
           )}
 
@@ -463,10 +550,18 @@ export function Enrol() {
             hint="A second identity check protects your hospital record."
           />
 
-          <button type="submit" className="btn btn-primary mt-6 w-full" disabled={busy}>
-            {busy ? <Spinner label="Checking" inverted /> : 'Send my code'}
+          <button
+            type="submit"
+            className="btn btn-primary mt-6 w-full"
+            disabled={busy}
+          >
+            {busy ? <Spinner label="Checking" inverted /> : 'Continue'}
           </button>
-          <button type="button" className="btn btn-quiet mt-2 w-full" onClick={() => setStep('help')}>
+          <button
+            type="button"
+            className="btn btn-quiet mt-2 w-full"
+            onClick={() => setStep('help')}
+          >
             My number is not recognised
           </button>
 
@@ -475,7 +570,10 @@ export function Enrol() {
           </p>
           <p className="mt-4 rounded-[12px] bg-blush px-3 py-2 text-center text-xs text-alarm-700">
             Not for emergencies. Call{' '}
-            <a className="font-bold text-alarm-700" href={`tel:${emergencyNumber}`}>
+            <a
+              className="font-bold text-alarm-700"
+              href={`tel:${emergencyNumber}`}
+            >
               {formatPhone(emergencyNumber)}
             </a>
             .

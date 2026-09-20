@@ -13,6 +13,7 @@ export function ResetPassword() {
   useDocumentTitle('Choose a new password')
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
+  const patient = params.get('from') === 'patient'
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -39,8 +40,8 @@ export function ResetPassword() {
     return (
       <AuthCard>
         <h1 className="text-2xl font-extrabold">This link is incomplete</h1>
-        <p className="mt-2 text-sm text-muted">Open the reset link from your email again, or request a new one.</p>
-        <Link to="/forgot-password" className="btn btn-primary mt-6 w-full no-underline">Request a new link</Link>
+        <p className="mt-2 text-sm text-muted">{patient ? 'Return to patient password recovery and enter your EHR number again.' : 'Open the reset link from your email again, or request a new one.'}</p>
+        <Link to={patient ? '/forgot-password?from=patient' : '/forgot-password'} className="btn btn-primary mt-6 w-full no-underline">Start again</Link>
       </AuthCard>
     )
   }
@@ -51,14 +52,14 @@ export function ResetPassword() {
         <>
           <h1 className="text-2xl font-extrabold">Password changed</h1>
           <p className="mt-2 text-sm text-muted">Every device that was signed in to your account has been signed out. Sign in with your new password.</p>
-          <Link to="/" className="btn btn-primary mt-6 w-full no-underline">Go to sign in</Link>
+          <Link to={patient ? '/patients' : '/staff'} className="btn btn-primary mt-6 w-full no-underline">Go to sign in</Link>
         </>
       ) : (
         <form onSubmit={submit} noValidate>
           <h1 className="text-2xl font-extrabold">Choose a new password</h1>
           {error && (
             <Alert tone="danger" className="mt-4">
-              {error} {error.toLowerCase().includes('expired') && <Link to="/forgot-password">Request a new link.</Link>}
+              {error} {error.toLowerCase().includes('expired') && <Link to={patient ? '/forgot-password?from=patient' : '/forgot-password'}>Start again.</Link>}
             </Alert>
           )}
           <PasswordField wrapperClassName="mt-5" label="New password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" hint="At least 12 characters." required />

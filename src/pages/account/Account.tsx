@@ -185,14 +185,7 @@ export function Account() {
                   <dd className="font-bold">{principal.centreName}</dd>
                 </div>
               )}
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">Authenticator app</dt>
-                <dd>{principal.mfaEnabled ? <Badge tone="green">Enabled</Badge> : principal.scope === 'PATIENT' ? <Badge>Not required</Badge> : <Badge tone="gold">Not set up</Badge>}</dd>
-              </div>
             </dl>
-            {principal.scope !== 'PATIENT' && (
-              <p className="mt-4 text-xs text-muted">Lost your authenticator phone and your recovery codes? Central Administration can reset your second factor.</p>
-            )}
           </Panel>
           <Panel title="Change password">
             <ChangePasswordForm />

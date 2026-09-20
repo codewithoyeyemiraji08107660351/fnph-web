@@ -27,7 +27,7 @@ export function StopScreen({ result }: { result: Pick<TriageResult, 'escalation'
   )
 }
 
-export function TriageStep({ onProceed, onStop }: { onProceed: () => void; onStop: (r: TriageResult) => void }) {
+export function TriageStep({ onProceed, onStop }: { onProceed: (r: TriageResult) => void; onStop: (r: TriageResult) => void }) {
   const set = useQuery({ queryKey: ['triage-questions'], queryFn: carePathApi.questions })
   const [answers, setAnswers] = useState<Record<string, 'YES' | 'NO'>>({})
   const [busy, setBusy] = useState(false)
@@ -37,11 +37,11 @@ export function TriageStep({ onProceed, onStop }: { onProceed: () => void; onSto
   if (set.isError) return <ErrorState error={set.error} onRetry={() => set.refetch()} />
   const complete = questions.length > 0 && questions.every((q) => answers[q.publicId])
   return (
-    <><div className="screen-heading"><span className="eyebrow">Before each booking</span><h1>Check whether online care is safe today</h1><p>This non-emergency warning appears when you begin a consultation request. Answer every question truthfully; any “Yes” stops online booking and directs you to urgent in-person care.</p></div>
+    <><div className="stage-header"><div><span>First-time setup</span><strong>Complete the safety questions</strong></div><span className="step-pill">Step 2 of 2</span></div><div className="screen-heading"><span className="eyebrow">One-time safety check</span><h1>Check whether online care is suitable</h1><p>Answer these questions once during your first sign-in. Your result will be reused when you request a consultation.</p></div>
       <div className="notice danger"><b>Do not use this portal for a psychiatric or medical emergency.</b><span>If you are in immediate danger or cannot participate safely, seek urgent physical help instead of waiting for a video appointment.</span></div>
       <form className="card triage-card" onSubmit={(event) => { event.preventDefault(); void (async () => {
         setBusy(true); setError(null)
-        try { const result = await carePathApi.submitTriage(answers); if (result.mayProceed) onProceed(); else onStop(result) }
+        try { const result = await carePathApi.submitTriage(answers); if (result.mayProceed) onProceed(result); else onStop(result) }
         catch (err) { setError(toApiError(err).message) } finally { setBusy(false) }
       })() }}>
         {questions.map((q, i) => <fieldset key={q.publicId}><legend>{i + 1}. {q.questionText}</legend>{(['YES', 'NO'] as const).map((v) => <label key={v}><input type="radio" name={q.publicId} checked={answers[q.publicId] === v} onChange={() => setAnswers((a) => ({ ...a, [q.publicId]: v }))} /> {v === 'YES' ? 'Yes' : 'No'}</label>)}</fieldset>)}
