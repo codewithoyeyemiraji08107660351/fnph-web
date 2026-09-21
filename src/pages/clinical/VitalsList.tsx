@@ -21,11 +21,20 @@ const ROWS: Array<[string, (v: import('@/lib/api/types').VitalsReading) => strin
 ]
 
 /** Readings for one appointment, newest first. Verification is a separate permission. */
-export function VitalsList({ appointmentPublicId }: { appointmentPublicId: string }) {
+export function VitalsList({
+  appointmentPublicId,
+  readOnly = false,
+}: {
+  appointmentPublicId: string
+  readOnly?: boolean
+}) {
   const qc = useQueryClient()
   const toast = useToast()
   const { can } = useAuth()
-  const vitals = useQuery({ queryKey: ['vitals', appointmentPublicId], queryFn: () => workQueueApi.vitals(appointmentPublicId) })
+  const vitals = useQuery({
+    queryKey: ['vitals', appointmentPublicId],
+    queryFn: () => workQueueApi.vitals(appointmentPublicId),
+  })
   const [busy, setBusy] = useState<string | null>(null)
 
   if (vitals.isLoading) return <Spinner label="Loading readings" />
@@ -41,8 +50,11 @@ export function VitalsList({ appointmentPublicId }: { appointmentPublicId: strin
               <strong>Taken {formatDateTime(v.measuredAt)}</strong>
               {v.measurementSource && <span className="text-muted">. {v.measurementSource}</span>}
             </p>
+
             {v.verifiedAt ? (
               <Badge tone="green">Verified by {v.verifiedBy}</Badge>
+            ) : readOnly ? (
+              <Badge tone="gold">Patient reported</Badge>
             ) : can('vitals.verify') ? (
               <button
                 type="button"
@@ -50,6 +62,7 @@ export function VitalsList({ appointmentPublicId }: { appointmentPublicId: strin
                 disabled={busy === v.publicId}
                 onClick={async () => {
                   setBusy(v.publicId)
+
                   try {
                     await workQueueApi.verifyVitals(v.publicId)
                     toast('Readings verified.')
@@ -67,9 +80,11 @@ export function VitalsList({ appointmentPublicId }: { appointmentPublicId: strin
               <Badge tone="gold">Patient reported</Badge>
             )}
           </div>
+
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
             {ROWS.map(([label, get]) => {
               const value = get(v)
+
               return value ? (
                 <div key={label}>
                   <dt className="text-xs text-muted">{label}</dt>
@@ -78,6 +93,7 @@ export function VitalsList({ appointmentPublicId }: { appointmentPublicId: strin
               ) : null
             })}
           </dl>
+
           {v.notes && <p className="mt-3 text-sm text-muted">Patient note: {v.notes}</p>}
         </div>
       ))}
