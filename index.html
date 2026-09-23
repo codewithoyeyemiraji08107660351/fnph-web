@@ -6,6 +6,22 @@
     <meta name="description" content="Secure, scheduled telepsychiatry from Federal Neuropsychiatric Hospital Kaduna for existing patients, hospital staff and Kaduna State Centres of Excellence." />
     <meta name="theme-color" content="#075b45" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
+      <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        connect-src 'self' https://api.fnphkad.cloud;
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: blob: https:;
+        font-src 'self' data: https:;
+        media-src 'self' blob: https:;
+        frame-src 'self' https:;
+        object-src 'none';
+        base-uri 'self';
+        form-action 'self';
+      "
+    />
     <link rel="icon" type="image/png" href="/favicon-64.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>FNPH Kaduna Telepsychiatry</title>
