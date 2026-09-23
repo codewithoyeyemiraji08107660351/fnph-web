@@ -25,6 +25,7 @@ export function TerminateDialog({ consultationId, initialReason, onClose, onEnde
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const safetyOk = safety.trim().length >= 10
+  const noteOk = note.trim().length > 0
 
   return (
     <Dialog
@@ -36,15 +37,15 @@ export function TerminateDialog({ consultationId, initialReason, onClose, onEnde
       footer={
         <>
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Go back</button>
-          <button
+                   <button
             type="button"
             className="btn btn-danger"
-            disabled={busy || !reason || !safetyOk}
+            disabled={busy || !reason || !noteOk || !safetyOk}
             onClick={async () => {
               setBusy(true)
               setError(null)
               try {
-                await consultationApi.terminate(consultationId, { reason: reason as TerminationReason, note: note.trim() || undefined, safetyAction: safety.trim() })
+                await consultationApi.terminate(consultationId, { reason: reason as TerminationReason, note: note.trim(), safetyAction: safety.trim() })
                 onEnded(reason as TerminationReason)
               } catch (err) {
                 setError(toApiError(err).message)
@@ -63,7 +64,15 @@ export function TerminateDialog({ consultationId, initialReason, onClose, onEnde
         {TERMINATION_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
       </SelectField>
       {reason === 'EMERGENCY' && <Alert tone="danger" className="mt-3">Follow the hospital’s emergency escalation now. Complete this record once the patient is safe.</Alert>}
-      <TextAreaField wrapperClassName="mt-4" label="What happened (optional)" rows={2} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
+          <TextAreaField
+        wrapperClassName="mt-4"
+        label="What happened"
+        rows={2}
+        maxLength={2000}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        hint={noteOk ? undefined : 'Required.'}
+      />
       <TextAreaField
         wrapperClassName="mt-4"
         label="What did you do to keep the patient safe?"
