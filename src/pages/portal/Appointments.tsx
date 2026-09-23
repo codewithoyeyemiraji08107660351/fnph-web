@@ -212,16 +212,19 @@ function Card({ a, highlighted }: { a: Appointment; highlighted: boolean }) {
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {canJoin && (
-          <Link
-            to={`/portal/consultations/${encodeURIComponent(a.publicId)}`}
-            className="btn btn-primary no-underline"
-          >
-            <i aria-hidden className="bi bi-camera-video" /> Join the consultation
-          </Link>
-        )}
+          {canJoin && (
+            <Link
+              to={`/portal/consultations/${encodeURIComponent(a.publicId)}`}
+              className="btn btn-primary no-underline flex min-h-[48px] items-center gap-2 px-5 text-base font-extrabold shadow-sm"
+              aria-label="Join your consultation now"
+            >
+              <i aria-hidden className="bi bi-camera-video-fill text-lg" />
+              <span>Join Consultation Now</span>
+            </Link>
+          )}
+
         {held && (
-          <Link to="/portal/booking" className="btn btn-primary no-underline">
+          <Link to="/portal/booking" className="btn btn-primary no-underline ">
             Finish booking
           </Link>
         )}
@@ -334,18 +337,22 @@ export function Appointments() {
 
   return (
     <>
+    
       <PageHeader
         kicker="My care"
         title="Appointments"
         actions={
           <Link
             to="/portal/booking"
-            className="btn btn-primary no-underline text-white"
+            className="btn btn-primary no-underline flex min-h-[48px] items-center gap-2 px-5 text-base font-extrabold text-white shadow-sm"
+            aria-label="Book a new consultation"
           >
-            Book a consultation
+            <i aria-hidden className="bi bi-calendar-plus-fill text-lg" />
+            <span>Book a New Consultation</span>
           </Link>
         }
       />
+
       {notice && (
         <Alert tone="info" className="mb-5">
           {notice}
