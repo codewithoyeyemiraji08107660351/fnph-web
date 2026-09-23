@@ -10,7 +10,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
 # Same origin: the proxy sends /api to the backend, so the base URL stays empty.
-ARG VITE_API_BASE_URL=
+ARG VITE_API_BASE_URL=https://api.fnphkad.cloud
 ARG VITE_FALLBACK_EMERGENCY_NUMBER=08032722243
 ARG VITE_FALLBACK_INACTIVITY_MINUTES=30
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
