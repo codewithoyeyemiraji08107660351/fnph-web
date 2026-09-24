@@ -120,10 +120,10 @@ export const patientRecordsApi = {
   drift: (page = 0) => api.list<{ publicId: string; ehrNumber: string; name: string; flaggedAt?: string; details?: string }>('/patients/drift', { params: { page, size: 50 } }),
   clearDrift: (id: string, notes: string) => api.post<void>(`/patients/${seg(id)}/drift/clear`, null, { params: { notes } }),
   /** Closes an enrolment check that could not match. Creates an inactive record. */
-  createManual: (p: { ehrNumber: string; firstName: string; lastName: string; dateOfBirth: string; phoneNumber?: string; email?: string; verificationRequestPublicId: string; verifiedHow: string }) =>
+  createManual: (p: { ehrNumber: string; firstName: string; lastName: string; dateOfBirth: string; phoneNumber?: string; verificationRequestPublicId: string; verifiedHow: string }) =>
     api.post<{ publicId: string; ehrNumber: string; active: boolean; next: string }>('/admin/patients', null, { params: p }),
   verify: (id: string, assessmentDetail: string) => api.post<void>(`/admin/patients/${seg(id)}/verify`, null, { params: { assessmentDetail } }),
-  activate: (id: string) => api.post<{ username: string; status: string; setupLinkSent: boolean; note: string }>(`/admin/patients/${seg(id)}/activate`),
+  activate: (id: string) => api.post<{ username: string; status: string; activationLink: string; expiresAt: string; note: string }>(`/admin/patients/${seg(id)}/activate`),
   /** Who is waiting at a desk for an enrolment code. The code itself is never returned. */
   pendingCodes: () => api.list<{ publicId: string; ehrNumber: string; destinationMasked?: string; expiresAt: string; attempts: number }>('/admin/enrolment/pending-codes'),
   financeReport: (patientPublicId: string) => api.get<FinanceReport>(`/finance/reports/patient/${seg(patientPublicId)}`),

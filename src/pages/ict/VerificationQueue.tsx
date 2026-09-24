@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/Toast'
 const FILTERS: Array<VerificationStatus | ''> = ['SUBMITTED', 'WITH_HIM', 'WITH_ICT', '']
 
 function CreateRecordDialog({ req, onClose, onDone }: { req: VerificationRequest; onClose: () => void; onDone: (patientId: string) => void }) {
-  const [f, setF] = useState({ ehrNumber: req.ehrNumberClaimed, firstName: req.fullName.split(' ')[0] ?? '', lastName: req.fullName.split(' ').slice(1).join(' '), dateOfBirth: req.dateOfBirth ?? '', phoneNumber: req.phoneNumber ?? '', email: '', verifiedHow: '' })
+  const [f, setF] = useState({ ehrNumber: req.ehrNumberClaimed, firstName: req.fullName.split(' ')[0] ?? '', lastName: req.fullName.split(' ').slice(1).join(' '), dateOfBirth: req.dateOfBirth ?? '', phoneNumber: req.phoneNumber ?? '', verifiedHow: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const ok = f.ehrNumber.trim() && f.firstName.trim() && f.lastName.trim() && f.dateOfBirth && f.verifiedHow.trim().length >= 10
@@ -27,7 +27,7 @@ function CreateRecordDialog({ req, onClose, onDone }: { req: VerificationRequest
         <button type="button" className="btn btn-primary" disabled={busy || !ok} onClick={async () => {
           setBusy(true); setError(null)
           try {
-            const r = await patientRecordsApi.createManual({ ehrNumber: f.ehrNumber.trim(), firstName: f.firstName.trim(), lastName: f.lastName.trim(), dateOfBirth: f.dateOfBirth, phoneNumber: f.phoneNumber.trim() || undefined, email: f.email.trim() || undefined, verificationRequestPublicId: req.publicId, verifiedHow: f.verifiedHow.trim() })
+            const r = await patientRecordsApi.createManual({ ehrNumber: f.ehrNumber.trim(), firstName: f.firstName.trim(), lastName: f.lastName.trim(), dateOfBirth: f.dateOfBirth, phoneNumber: f.phoneNumber.trim() || undefined, verificationRequestPublicId: req.publicId, verifiedHow: f.verifiedHow.trim() })
             onDone(r.publicId)
           } catch (err) { setError(toApiError(err).message); setBusy(false) }
         }}>{busy ? <Spinner label="Creating" inverted /> : 'Create record'}</button></>}>
@@ -38,7 +38,6 @@ function CreateRecordDialog({ req, onClose, onDone }: { req: VerificationRequest
         <TextField label="First name" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} />
         <TextField label="Last name" value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} />
         <TextField label="Phone" type="tel" value={f.phoneNumber} onChange={(e) => setF({ ...f, phoneNumber: e.target.value })} />
-        <TextField label="Email (needed to send the setup link)" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
         <TextAreaField wrapperClassName="sm:col-span-2" label="How was this person verified?" rows={2} value={f.verifiedHow} onChange={(e) => setF({ ...f, verifiedHow: e.target.value })}
           placeholder="Paper record 301122 pulled by HIM; identity checked against national ID at the records desk on 15 September." />
       </div>

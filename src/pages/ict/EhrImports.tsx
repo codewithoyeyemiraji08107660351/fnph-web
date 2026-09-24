@@ -34,7 +34,7 @@ function ManualRecordDialog({ record, onClose, onSaved }: { record?: ManualEhrRe
       onSaved()
     } catch (err) { setError(toApiError(err).message) } finally { setBusy(false) }
   }
-  const valid = form.ehrNumber.trim() && form.fullName.trim() && form.dateOfBirth && (form.phoneNumber?.trim() || form.email?.trim()) && form.reason.trim().length >= 5
+  const valid = form.ehrNumber.trim() && form.fullName.trim() && form.dateOfBirth && form.reason.trim().length >= 5
   return <Dialog open onClose={onClose} busy={busy} title={record ? `Edit ${record.ehrNumber}` : 'Add EHR details manually'}
     description="This governed record becomes available to patient enrolment and is compared with every active import."
     footer={<><button className="btn btn-secondary" type="button" onClick={onClose} disabled={busy}>Cancel</button><button className="btn btn-primary" type="button" onClick={save} disabled={busy || !valid}>{busy ? <Spinner label="Saving" inverted /> : 'Save record'}</button></>}>
@@ -43,7 +43,7 @@ function ManualRecordDialog({ record, onClose, onSaved }: { record?: ManualEhrRe
       <TextField label="EHR number" required maxLength={50} value={form.ehrNumber} onChange={(e) => set('ehrNumber', e.target.value)} />
       <TextField label="Full name" required maxLength={150} value={form.fullName} onChange={(e) => set('fullName', e.target.value)} />
       <TextField label="Date of birth" type="date" required max={today()} value={form.dateOfBirth} onChange={(e) => set('dateOfBirth', e.target.value)} />
-      <TextField label="Phone number" type="tel" value={form.phoneNumber} onChange={(e) => set('phoneNumber', e.target.value)} hint="A valid phone or email is required." />
+      <TextField label="Phone number" type="tel" value={form.phoneNumber} onChange={(e) => set('phoneNumber', e.target.value)} />
       <TextField label="Email" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
       <TextField label="Clinic" value={form.clinic} onChange={(e) => set('clinic', e.target.value)} />
       <TextField label="Patient status" value={form.patientStatus} onChange={(e) => set('patientStatus', e.target.value)} />

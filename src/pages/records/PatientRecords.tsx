@@ -39,7 +39,7 @@ function RecordDialog({ id, onClose }: { id: string; onClose: () => void }) {
   const [contact, setContact] = useState({ phoneNumber: '', email: '', address: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activation, setActivation] = useState<string | null>(null)
+  const [activation, setActivation] = useState<{ username: string; activationLink: string; expiresAt: string } | null>(null)
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ['patient-record', id] })
     await qc.invalidateQueries({ queryKey: ['patients'] })
@@ -50,7 +50,15 @@ function RecordDialog({ id, onClose }: { id: string; onClose: () => void }) {
       {rec.isLoading && <Spinner />}
       {rec.isError && <ErrorState error={rec.error} />}
       {error && <Alert tone="danger" className="mb-4">{error}</Alert>}
-      {activation && <Alert tone="info" className="mb-4">{activation}</Alert>}
+      {activation && (
+        <Alert tone="info" className="mb-4">
+          <p className="mb-2">Account <strong>{activation.username}</strong> created. Give this link to the patient directly — it has not been emailed and expires {formatDateTime(activation.expiresAt)}.</p>
+          <div className="flex items-center gap-2">
+            <input readOnly className="input flex-1 text-xs" value={activation.activationLink} onFocus={(e) => e.target.select()} />
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => { navigator.clipboard.writeText(activation.activationLink); toast('Link copied.') }}>Copy</button>
+          </div>
+        </Alert>
+      )}
       {p && (
         <div className="space-y-5">
           <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -66,7 +74,7 @@ function RecordDialog({ id, onClose }: { id: string; onClose: () => void }) {
             {can('patient.activate') && !p.isActive && (
               <button type="button" className="btn btn-primary btn-sm" disabled={busy || !p.eligibilityVerifiedAt} title={p.eligibilityVerifiedAt ? undefined : 'Record the eligibility check first'} onClick={async () => {
                 setBusy(true); setError(null)
-                try { const r = await patientRecordsApi.activate(p.publicId); setActivation(`Account ${r.username} created. ${r.note}`); await refresh() } catch (err) { setError(toApiError(err).message) } finally { setBusy(false) }
+                try { const r = await patientRecordsApi.activate(p.publicId); setActivation({ username: r.username, activationLink: r.activationLink, expiresAt: r.expiresAt }); await refresh() } catch (err) { setError(toApiError(err).message) } finally { setBusy(false) }
               }}>Create online account</button>
             )}
             {can('patient.flag_drift') && p.driftFlagged && <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('drift')}>Clear the mismatch</button>}
