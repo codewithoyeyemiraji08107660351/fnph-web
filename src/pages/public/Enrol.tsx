@@ -270,7 +270,7 @@ export function Enrol() {
         <div className="landing-hero">
           <div>
             <span className="kicker">FNPH KADUNA TELEPSYCHIATRY</span>
-            <h1>Follow-up care, from a calm place of your choosing.</h1>
+            <h1>Follow-up care, from a calm place of your choice.</h1>
             <p>
               Your health is our concern. Use your existing hospital EHR number to
               enrol, complete the safety and privacy checks, then request a secure
