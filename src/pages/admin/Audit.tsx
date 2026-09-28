@@ -78,9 +78,9 @@ export function Audit() {
         description="Append-only record of access, supervision, approvals, clinical amendments, financial postings, downloads and configuration changes. Times are WAT."
         actions={
           can('audit.export') && (
-            <button className="btn btn-secondary" onClick={() => verify.mutate()} disabled={verify.isPending}>
-              {verify.isPending ? <Spinner label="Verifying" /> : <><i aria-hidden className="bi bi-link-45deg" /> Verify integrity</>}
-            </button>
+            // <button className="btn btn-secondary" onClick={() => verify.mutate()} disabled={verify.isPending}>
+            //   {verify.isPending ? <Spinner label="Verifying" /> : <><i aria-hidden className="bi bi-link-45deg" /> Verify integrity</>}
+            // </button>
           )
         }
       />
