@@ -1,15 +1,15 @@
 import { Fragment, useState, type FormEvent } from 'react'
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery /*, useMutation */ } from '@tanstack/react-query'
 import { adminApi, type AuditSearch } from '@/lib/api/endpoints/admin'
-import { toApiError } from '@/lib/api/http'
+// import { toApiError } from '@/lib/api/http'
 import type { AuditEntry } from '@/lib/api/types'
 import { formatDateTime, humanise, serverToWatInput, watInputToServer } from '@/lib/format'
-import { useAuth } from '@/lib/auth/AuthProvider'
+// import { useAuth } from '@/lib/auth/AuthProvider'
 import { EmptyState, ErrorState, PageHeader, Pager, Panel } from '@/components/ui/Page'
 import { Badge } from '@/components/ui/Badge'
 import { TextField } from '@/components/ui/Field'
 import { Spinner } from '@/components/ui/Spinner'
-import { Alert } from '@/components/ui/Alert'
+// import { Alert } from '@/components/ui/Alert'
 import { Dialog } from '@/components/ui/Dialog'
 
 const PAGE_SIZE = 50
@@ -41,7 +41,7 @@ function SupervisionTrail({ sessionId, onClose }: { sessionId: number; onClose: 
 }
 
 export function Audit() {
-  const { can } = useAuth()
+  // const { can } = useAuth()
   const now = new Date()
   const [draft, setDraft] = useState({ action: '', entityType: '', from: serverToWatInput(new Date(now.getTime() - 7 * 86400_000)), to: '' })
   const [filters, setFilters] = useState<AuditSearch>({ from: watInputToServer(draft.from) })
@@ -54,7 +54,7 @@ export function Audit() {
     queryFn: () => adminApi.audit.search({ ...filters, page, size: PAGE_SIZE }),
     placeholderData: keepPreviousData,
   })
-  const verify = useMutation({ mutationFn: adminApi.audit.verify })
+  // const verify = useMutation({ mutationFn: adminApi.audit.verify })
 
   const apply = (e: FormEvent) => {
     e.preventDefault()
@@ -72,10 +72,11 @@ export function Audit() {
 
   return (
     <>
-      {<PageHeader
+      <PageHeader
         kicker="Governance"
         title="Audit log"
         description="Append-only record of access, supervision, approvals, clinical amendments, financial postings, downloads and configuration changes. Times are WAT."
+        /* Verify integrity button disabled for now
         actions={
           can('audit.export') && (
             <button className="btn btn-secondary" onClick={() => verify.mutate()} disabled={verify.isPending}>
@@ -83,8 +84,10 @@ export function Audit() {
             </button>
           )
         }
-      />}
+        */
+      />
 
+      {/* Verify integrity result banners disabled for now
       {verify.isError && <Alert tone="danger" className="mb-5">{toApiError(verify.error).message}</Alert>}
       {verify.data && (
         <Alert tone={verify.data.intact ? 'success' : 'danger'} title={verify.data.intact ? 'Audit chain intact' : 'Audit chain broken'} className="mb-5">
@@ -99,6 +102,7 @@ export function Audit() {
           {!verify.data.intact && <p className="mt-2 font-bold">Treat this as a security incident. Preserve the database and inform ICT and management.</p>}
         </Alert>
       )}
+      */}
 
       <Panel bodyClassName="">
         <form onSubmit={apply} className="grid gap-3 border-b border-line p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_auto] xl:items-end">
