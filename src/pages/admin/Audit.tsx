@@ -72,18 +72,18 @@ export function Audit() {
 
   return (
     <>
-      <PageHeader
+      {/* <PageHeader
         kicker="Governance"
         title="Audit log"
         description="Append-only record of access, supervision, approvals, clinical amendments, financial postings, downloads and configuration changes. Times are WAT."
         actions={
           can('audit.export') && (
-            // <button className="btn btn-secondary" onClick={() => verify.mutate()} disabled={verify.isPending}>
-            //   {verify.isPending ? <Spinner label="Verifying" /> : <><i aria-hidden className="bi bi-link-45deg" /> Verify integrity</>}
-            // </button>
+            <button className="btn btn-secondary" onClick={() => verify.mutate()} disabled={verify.isPending}>
+              {verify.isPending ? <Spinner label="Verifying" /> : <><i aria-hidden className="bi bi-link-45deg" /> Verify integrity</>}
+            </button>
           )
         }
-      />
+      /> */}
 
       {verify.isError && <Alert tone="danger" className="mb-5">{toApiError(verify.error).message}</Alert>}
       {verify.data && (
