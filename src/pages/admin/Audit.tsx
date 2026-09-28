@@ -72,7 +72,7 @@ export function Audit() {
 
   return (
     <>
-      {/* <PageHeader
+      {<PageHeader
         kicker="Governance"
         title="Audit log"
         description="Append-only record of access, supervision, approvals, clinical amendments, financial postings, downloads and configuration changes. Times are WAT."
@@ -83,7 +83,7 @@ export function Audit() {
             </button>
           )
         }
-      /> */}
+      />}
 
       {verify.isError && <Alert tone="danger" className="mb-5">{toApiError(verify.error).message}</Alert>}
       {verify.data && (
