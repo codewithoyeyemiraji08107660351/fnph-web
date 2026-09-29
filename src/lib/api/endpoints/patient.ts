@@ -114,30 +114,30 @@ export const documentsApi = {
    * Never call it on page load or from a retry.
    */
   downloadFile: async (documentPublicId: string) => {
-    const response = await http.get<Blob>(
-      `/documents/${seg(documentPublicId)}/file`,
-      {
-        responseType: 'blob',
-        timeout: 120_000,
-        headers: {
-          Accept: 'application/pdf',
-        },
+  const response = await http.get<Blob>(
+    `/documents/${seg(documentPublicId)}/file`,
+    {
+      responseType: 'blob',
+      timeout: 120_000,
+      headers: {
+        Accept: 'application/pdf',
       },
-    )
+    },
+  )
 
-    const disposition = String(
-      response.headers['content-disposition'] ?? '',
-    )
+  const disposition = String(
+    response.headers['content-disposition'] ?? '',
+  )
 
-    const filename =
-      /filename="?([^";]+)"?/.exec(disposition)?.[1] ??
-      `fnph-document-${documentPublicId}.pdf`
+  const filename =
+    /filename="?([^";]+)"?/.exec(disposition)?.[1] ??
+    `fnph-document-${documentPublicId}.pdf`
 
-    return {
-      blob: response.data,
-      filename,
-    }
-  },
+  return {
+    blob: response.data,
+    filename,
+  }
+},
 
   /**
    * Authenticated image, so fetched rather than linked.
