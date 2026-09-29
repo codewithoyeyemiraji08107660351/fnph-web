@@ -11,7 +11,6 @@ export const PatientRoom = lazy(() => import('@/pages/portal/PatientRoom').then(
 export const Approvals = lazy(() => import('@/pages/hub/Approvals').then((m) => ({ default: m.Approvals })))
 export const ReleaseDesk = lazy(() => import('@/pages/hub/ReleaseDesk').then((m) => ({ default: m.ReleaseDesk })))
 export const ReleaseBundleView = lazy(() => import('@/pages/hub/ReleaseBundleView').then((m) => ({ default: m.ReleaseBundleView })))
-// export const ReviewQueries = lazy(() => import('@/pages/hub/ReviewQueries').then((m) => ({ default: m.ReviewQueries })))
 
 export const DoctorWorklist = lazy(() => import('@/pages/clinical/DoctorWorklist').then((m) => ({ default: m.DoctorWorklist })))
 export const DoctorRoom = lazy(() => import('@/pages/clinical/DoctorRoom').then((m) => ({ default: m.DoctorRoom })))
