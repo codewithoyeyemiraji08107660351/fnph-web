@@ -13,27 +13,111 @@ import type {
 } from '../types'
 
 export const approvalsApi = {
-  queue: (page = 0, size = 50) => api.get<ApprovalQueue>('/hub/approvals', { params: { page, size } }),
+  queue: (page = 0, size = 50) =>
+    api.get<ApprovalQueue>('/hub/approvals', {
+      params: { page, size },
+    }),
+
   /** JSON body. Moves money at approval, so it is never retried automatically. */
-  approve: (appointmentPublicId: string, body: ApproveRequest) =>
-    api.post<Appointment>(`/hub/approvals/${seg(appointmentPublicId)}/approve`, body),
+  approve: (
+    appointmentPublicId: string,
+    body: ApproveRequest,
+  ) =>
+    api.post<Appointment>(
+      `/hub/approvals/${seg(appointmentPublicId)}/approve`,
+      body,
+    ),
+
   /** Query parameter. The patient is shown this reason. */
-  reject: (appointmentPublicId: string, reason: string) =>
-    api.post<Appointment>(`/hub/approvals/${seg(appointmentPublicId)}/reject`, null, { params: { reason } }),
-  history: (appointmentPublicId: string) => api.list<AppointmentHistory>(`/hub/approvals/${seg(appointmentPublicId)}/history`),
+  reject: (
+    appointmentPublicId: string,
+    reason: string,
+  ) =>
+    api.post<Appointment>(
+      `/hub/approvals/${seg(appointmentPublicId)}/reject`,
+      null,
+      { params: { reason } },
+    ),
+
+  history: (appointmentPublicId: string) =>
+    api.list<AppointmentHistory>(
+      `/hub/approvals/${seg(appointmentPublicId)}/history`,
+    ),
+
   /** Gated on appointment.assign_team. The coordinator does not hold user.read. */
-  staff: (role?: string) => api.list<StaffOption>('/hub/approvals/assignable-staff', { params: { role } }),
-  rooms: (type?: RoomOption['roomType']) => api.list<RoomOption>('/admin/rooms', { params: { type } }),
-  availability: (serviceDate: string) => api.list<DoctorAvailability>('/admin/availability', { params: { serviceDate } }),
+  staff: (role?: string) =>
+    api.list<StaffOption>(
+      '/hub/approvals/assignable-staff',
+      { params: { role } },
+    ),
+
+  rooms: (type?: RoomOption['roomType']) =>
+    api.list<RoomOption>(
+      '/admin/rooms',
+      { params: { type } },
+    ),
+
+  availability: (serviceDate: string) =>
+    api.list<DoctorAvailability>(
+      '/admin/availability',
+      { params: { serviceDate } },
+    ),
 }
 
 export const releaseApi = {
-  desk: (status?: ReleaseDeskRow['status']) => api.list<ReleaseDeskRow>('/hub/releases', { params: { status } }),
-  get: (bundlePublicId: string) => api.get<ReleaseBundle>(`/hub/releases/${seg(bundlePublicId)}`),
+  /**
+   * Administrative release desk.
+   *
+   * This endpoint intentionally contains no clinical content.
+   */
+  desk: (status?: ReleaseDeskRow['status']) =>
+    api.list<ReleaseDeskRow>(
+      '/hub/releases',
+      { params: { status } },
+    ),
+
+  /**
+   * Complete single-bundle view.
+   *
+   * The response contains:
+   * - component completion state
+   * - clinical note
+   * - prescriptions and medicines
+   * - investigations and panels
+   * - follow-up recommendations
+   *
+   * All clinical data is read-only.
+   */
+  get: (bundlePublicId: string) =>
+    api.get<ReleaseBundle>(
+      `/hub/releases/${seg(bundlePublicId)}`,
+    ),
+
   /** All or nothing. */
-  release: (bundlePublicId: string, notes?: string) =>
-    api.post<ReleaseBundle>(`/hub/releases/${seg(bundlePublicId)}/release`, null, { params: { notes } }),
-  block: (bundlePublicId: string, reason: string) =>
-    api.post<ReleaseBundle>(`/hub/releases/${seg(bundlePublicId)}/block`, null, { params: { reason } }),
-  queries: () => api.list<ReviewRow>('/reviews/queries'),
+  release: (
+    bundlePublicId: string,
+    notes?: string,
+  ) =>
+    api.post<ReleaseBundle>(
+      `/hub/releases/${seg(bundlePublicId)}/release`,
+      null,
+      {
+        params: { notes },
+      },
+    ),
+
+  block: (
+    bundlePublicId: string,
+    reason: string,
+  ) =>
+    api.post<ReleaseBundle>(
+      `/hub/releases/${seg(bundlePublicId)}/block`,
+      null,
+      {
+        params: { reason },
+      },
+    ),
+
+  queries: () =>
+    api.list<ReviewRow>('/reviews/queries'),
 }

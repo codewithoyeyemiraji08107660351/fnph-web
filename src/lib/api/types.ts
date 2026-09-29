@@ -631,19 +631,132 @@ export interface ReviewRow {
 }
 
 /** clinical/api/ReleaseBundleResponse */
+export type ReleaseBundleComponentType =
+  | 'CLINICAL_NOTE'
+  | 'PRESCRIPTION'
+  | 'INVESTIGATION'
+  | 'FOLLOW_UP'
+
+export type ReleaseBundleStatus =
+  | 'INCOMPLETE'
+  | 'READY'
+  | 'RELEASED'
+  | 'BLOCKED'
+
+export interface ReleaseBundleComponent {
+  componentType: ReleaseBundleComponentType | string
+  complete: boolean
+  notRequired: boolean
+  notRequiredReason?: string | null
+  outstanding: boolean
+}
+
+/**
+ * Read-only clinical note returned by:
+ * GET /hub/releases/{bundlePublicId}
+ */
+export interface ReleaseClinicalNote {
+  clinicalNote?: string | null
+  version: number
+  signed: boolean
+  signedAt?: IsoDateTime | null
+  signedBy?: string | null
+  followUpRecommendation?: string | null
+  followUpTimeline?: string | null
+}
+
+/**
+ * One medicine on a prescription returned as part of a release bundle.
+ */
+export interface ReleasePrescriptionItem {
+  medication: string
+  strength?: string | null
+  frequency: string
+  duration?: string | null
+  instructions?: string | null
+  sequence?: number | null
+}
+
+/**
+ * Read-only prescription returned by the release-bundle endpoint.
+ */
+export interface ReleasePrescription {
+  publicId: string
+  issueNumber?: string | null
+  status: string
+  notRequired: boolean
+  notRequiredReason?: string | null
+  issueDate?: string | null
+  expiryDate?: string | null
+  validityDays?: number | null
+  clinicalInformation?: string | null
+  items: ReleasePrescriptionItem[]
+}
+
+/**
+ * One investigation panel.
+ */
+export interface ReleaseInvestigationItem {
+  panelName: string
+  panelCode?: string | null
+  notes?: string | null
+  sequence?: number | null
+}
+
+/**
+ * Read-only investigation request returned by the release-bundle endpoint.
+ */
+export interface ReleaseInvestigation {
+  publicId: string
+  issueNumber?: string | null
+  status: string
+  notRequired: boolean
+  notRequiredReason?: string | null
+  issueDate?: string | null
+  expiryDate?: string | null
+  validityDays?: number | null
+  clinicalInformation?: string | null
+  items: ReleaseInvestigationItem[]
+}
+
+/**
+ * Read-only follow-up recommendation returned by the release-bundle endpoint.
+ */
+export interface ReleaseFollowUp {
+  publicId: string
+  recommendation?: string | null
+  reviewInterval?: string | null
+  expectedTimeframe?: string | null
+  preferredDate?: string | null
+  preferredTime?: string | null
+  consultationMode?: string | null
+  status: string
+  scheduledDate?: string | null
+  completedDate?: string | null
+  notes?: string | null
+}
+
+/**
+ * Complete response from:
+ * GET /hub/releases/{bundlePublicId}
+ *
+ * The clinical fields are deliberately read-only. The Hub Coordinator can
+ * inspect them before release but cannot edit them here.
+ */
 export interface ReleaseBundle {
   publicId: string
-  status: 'INCOMPLETE' | 'READY' | 'RELEASED' | 'BLOCKED'
-  blockedReason?: string
-  components: Array<{
-    componentType: string
-    complete: boolean
-    notRequired: boolean
-    notRequiredReason?: string
-    outstanding: boolean
-  }>
-  releasedBy?: string
-  releasedAt?: IsoDateTime
+  status: ReleaseBundleStatus
+  blockedReason?: string | null
+
+  components: ReleaseBundleComponent[]
+
+  releasedBy?: string | null
+  releasedAt?: IsoDateTime | null
+
+  clinicalNote?: ReleaseClinicalNote | null
+  prescriptions?: ReleasePrescription[]
+  investigations?: ReleaseInvestigation[]
+  followUps?: ReleaseFollowUp[]
 }
 
 /** ReleaseController.ReleaseDeskRow */
