@@ -107,20 +107,51 @@ export const patientVitalsApi = {
 
 export const documentsApi = {
   mine: () => api.list<IssuedDocument>('/documents/mine'),
+
   /**
-    The download itself. This request is the claim: the server counts it
-    before sending the file, so nothing else may claim first. Never call it
-    on page load or from a retry.
-  */
+   * The download itself. This request is the claim: the server counts it
+   * before sending the file, so nothing else may claim first.
+   * Never call it on page load or from a retry.
+   */
   downloadFile: async (documentPublicId: string) => {
-    const response = await http.get<Blob>(`/documents/${seg(documentPublicId)}/file`, { responseType: 'blob', timeout: 120_000 })
-    const disposition = String(response.headers['content-disposition'] ?? '')
-    const filename = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? `fnph-document-${documentPublicId}.pdf`
-    return { blob: response.data, filename }
+    const response = await http.get<Blob>(
+      `/documents/${seg(documentPublicId)}/file`,
+      {
+        responseType: 'blob',
+        timeout: 120_000,
+        headers: {
+          Accept: 'application/pdf',
+        },
+      },
+    )
+
+    const disposition = String(
+      response.headers['content-disposition'] ?? '',
+    )
+
+    const filename =
+      /filename="?([^";]+)"?/.exec(disposition)?.[1] ??
+      `fnph-document-${documentPublicId}.pdf`
+
+    return {
+      blob: response.data,
+      filename,
+    }
   },
-  /** Authenticated image, so fetched rather than linked. Does not touch the allowance. */
+
+  /**
+   * Authenticated image, so fetched rather than linked.
+   * Does not touch the download allowance.
+   */
   qr: (documentPublicId: string) =>
-    http.get<Blob>(`/documents/${seg(documentPublicId)}/qr`, { responseType: 'blob' }).then((r) => r.data),
+    http
+      .get<Blob>(`/documents/${seg(documentPublicId)}/qr`, {
+        responseType: 'blob',
+        headers: {
+          Accept: 'image/png',
+        },
+      })
+      .then((r) => r.data),
 }
 
 /** The patient's own prescriptions and requests, with their contents, for reading on screen. */
