@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -638,27 +638,6 @@ function ClinicalContents({
     investigationCount > 0 ||
     followUpCount > 0
 
-  // Diagnostic logging: this is the exact breakdown of why the "no
-  // clinical content" banner is or isn't showing. Compare followUpCount
-  // here against the FOLLOW_UP row's `complete`/`notRequired` flags in
-  // the "[ReleaseBundle] raw bundle response" log below — if the
-  // component says complete but followUpCount is 0, the follow-up row
-  // exists but isn't linked to this bundle's bundle_id (or the wrong
-  // consultation/bundle association), which is a backend data issue,
-  // not this component.
-  // eslint-disable-next-line no-console
-  console.log('[ReleaseBundle] ClinicalContents evaluation', {
-    hasClinicalNote,
-    prescriptionCount,
-    investigationCount,
-    followUpCount,
-    hasClinicalData,
-    rawPrescriptions: bundle.prescriptions,
-    rawInvestigations: bundle.investigations,
-    rawFollowUps: bundle.followUps,
-    rawClinicalNote: bundle.clinicalNote,
-  })
-
   return (
     <div className="mt-5 space-y-5">
       <div>
@@ -709,34 +688,6 @@ export function ReleaseBundleView() {
     enabled: Boolean(bundleId),
   })
 
-  // Diagnostic logging: dumps the exact API response for this bundle,
-  // including the `components` array (which drives the "Done"/"Outstanding"
-  // badges) side by side with the clinical content arrays consumed above.
-  // If a component (e.g. FOLLOW_UP) shows complete: true, notRequired: false
-  // but clinicalContent.followUps is [], the row exists somewhere but its
-  // bundle_id doesn't point at this bundle -- check ReleaseService and the
-  // FollowUp entity, not the frontend.
-  useEffect(() => {
-    if (bundle.data) {
-      // eslint-disable-next-line no-console
-      console.log('[ReleaseBundle] raw bundle response', bundle.data)
-      // eslint-disable-next-line no-console
-      console.table(
-        bundle.data.components.map((c) => ({
-          componentType: c.componentType,
-          complete: c.complete,
-          notRequired: c.notRequired,
-          notRequiredReason: c.notRequiredReason,
-          outstanding: c.outstanding,
-        })),
-      )
-    }
-    if (bundle.isError) {
-      // eslint-disable-next-line no-console
-      console.error('[ReleaseBundle] failed to load bundle', bundleId, bundle.error)
-    }
-  }, [bundle.data, bundle.isError, bundle.error, bundleId])
-
   const [notes, setNotes] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [blocking, setBlocking] = useState(false)
@@ -765,8 +716,6 @@ export function ReleaseBundleView() {
   const released = b.status === 'RELEASED'
 
   const update = (next: typeof b) => {
-    // eslint-disable-next-line no-console
-    console.log('[ReleaseBundle] updating cached bundle after action', next)
     qc.setQueryData(['bundle', bundleId], next)
     void qc.invalidateQueries({
       queryKey: ['release-desk'],
@@ -788,8 +737,6 @@ export function ReleaseBundleView() {
       toast('Released. The patient has been notified.')
       setConfirming(false)
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[ReleaseBundle] release failed', b.publicId, err)
       setError(toApiError(err).message)
       setConfirming(false)
       void bundle.refetch()
@@ -971,7 +918,7 @@ export function ReleaseBundleView() {
         )}
       </div>
 
-      <ClinicalContents bundle={b} />
+      <ClinicalContents bundle={b.clinicalContent} />
 
       {confirming && (
         <Dialog
@@ -1057,8 +1004,6 @@ export function ReleaseBundleView() {
               toast('Bundle blocked.')
               setBlocking(false)
             } catch (err) {
-              // eslint-disable-next-line no-console
-              console.error('[ReleaseBundle] block failed', b.publicId, err)
               setError(
                 toApiError(err).message,
               )

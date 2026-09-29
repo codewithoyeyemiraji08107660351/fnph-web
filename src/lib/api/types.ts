@@ -744,6 +744,7 @@ export interface ReleaseFollowUp {
  * inspect them before release but cannot edit them here.
  */
 export interface ReleaseBundle {
+  [x: string]: any
   publicId: string
   status: ReleaseBundleStatus
   blockedReason?: string | null
