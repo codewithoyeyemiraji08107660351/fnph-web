@@ -17,7 +17,7 @@ function DecideDialog({ row, approve, onClose, onDone }: { row: CancellationRow;
   const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const needsNotes = !approve
+  const needsNotes = true
   return (
     <Dialog open onClose={onClose} busy={busy} title={approve ? `Cancel ${row.appointmentReference}?` : `Refuse the request for ${row.appointmentReference}?`}
       footer={<><button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Back</button>
@@ -31,7 +31,7 @@ function DecideDialog({ row, approve, onClose, onDone }: { row: CancellationRow;
           ? 'The appointment is cancelled and its time released. The patient is told the amount paid stays on their account for the next booking.'
           : 'The appointment stands. The patient sees your reason.'}
       </p>
-      <TextAreaField wrapperClassName="mt-4" label={needsNotes ? 'Reason the patient will see' : 'Notes (optional)'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <TextAreaField wrapperClassName="mt-4" label={approve ? 'Reason for cancelling' : 'Reason the patient will see'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
     </Dialog>
   )
 }
