@@ -60,7 +60,7 @@ export const ROLES: RoleDefinition[] = [
       { to: '/hub/approvals', label: 'Approvals', icon: 'bi-inbox', permission: 'appointment.read' },
       { to: '/hub/centre-approvals', label: 'Centre requests', icon: 'bi-buildings', permission: 'appointment.read' },
       { to: '/hub/releases', label: 'Release desk', icon: 'bi-send-check', permission: 'release_bundle.read' },
-      { to: '/hub/queries', label: 'Review queries', icon: 'bi-chat-square-text', permission: 'review.read' },
+      // { to: '/hub/queries', label: 'Review queries', icon: 'bi-chat-square-text', permission: 'review.read' },
       { to: '/hub/today', label: 'Appointments by day', icon: 'bi-calendar3', permission: 'appointment.read' },
       { to: '/hub/cancellations', label: 'Cancellation requests', icon: 'bi-calendar-x', permission: 'appointment.read' },
       { to: '/hub/patients', label: 'Patients', icon: 'bi-person-vcard', permission: 'patient.read' },
