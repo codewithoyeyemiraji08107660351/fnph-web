@@ -179,6 +179,56 @@ function HelpForm({
   )
 }
 
+/**
+ * The patient journey video beside the lookup form. Nothing downloads until
+ * the patient presses play, which matters on mobile data, and playsInline
+ * keeps iPhones from taking over the screen.
+ */
+function GuideCard() {
+  const [playing, setPlaying] = useState(false)
+
+  return (
+    <div className="card guide-card">
+      <h2>See how telepsychiatry works</h2>
+      {playing ? (
+        <video
+          className="guide-video"
+          src="/FNPH_Kaduna_Patient_Journey_35s.mp4"
+          controls
+          autoPlay
+          playsInline
+          onEnded={() => setPlaying(false)}
+        />
+      ) : (
+                  <button
+          type="button"
+          className="guide-visual"
+          onClick={() => setPlaying(true)}
+          aria-label="Play the patient journey video, 35 seconds"
+        >
+          <span className="guide-brand">
+            <img src="/fnph-logo.png" alt="" />
+            FNPH Kaduna
+          </span>
+          <span className="play-disc" aria-hidden>
+            ▶
+          </span>
+          {/* <span className="guide-caption">Patient journey</span>
+          <span className="guide-length">0:35</span> */}
+        </button>
+      )}
+      
+      <p>
+        Enrolment, booking, the private consultation room and follow-up care, in
+        half a minute.
+      </p>
+      <a className="button outline" href="#patient-main">
+        View patient journey
+      </a>
+    </div>
+  )
+}
+
 export function Enrol() {
   useDocumentTitle('Set up your patient account')
 
@@ -272,9 +322,9 @@ export function Enrol() {
             <span className="kicker">FNPH KADUNA TELEPSYCHIATRY</span>
             <h1>Follow-up care, from a calm place of your choice.</h1>
             <p>
-              Your health is our concern. Use your existing hospital EHR number to
-              enrol, complete the safety and privacy checks, then request a secure
-              consultation.
+              Your health is our concern. Use your existing hospital EHR number
+              to enrol, complete the safety and privacy checks, then request a
+              secure consultation.
             </p>
             <div className="eligibility-badges">
               <span>✓ Existing patients only</span>
@@ -345,20 +395,7 @@ export function Enrol() {
             )}
           </form>
 
-          <div className="card guide-card">
-            <div className="guide-visual">
-              <span className="play-disc">▶</span>
-              <small>Introduction video space</small>
-            </div>
-            <h2>See how telepsychiatry works</h2>
-            <p>
-              Learn about enrolment, booking, the private consultation room and
-              follow-up care.
-            </p>
-            <a className="button outline" href="#patient-main">
-              View patient journey
-            </a>
-          </div>
+          <GuideCard />
         </div>
       </>
     )
@@ -420,8 +457,8 @@ export function Enrol() {
           </div>
 
           <p className="mt-4 text-sm">
-            Choose the password you will use with your EHR number. This setup step
-            expires at {formatTime(match.setupExpiresAt)} WAT.
+            Choose the password you will use with your EHR number. This setup
+            step expires at {formatTime(match.setupExpiresAt)} WAT.
           </p>
           <p className="mt-2 text-xs text-muted">
             The hospital record list is dated{' '}

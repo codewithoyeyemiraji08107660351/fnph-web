@@ -931,32 +931,104 @@
     margin-top: 13px;
   }
 
+  /* A still frame, not a washed-out logo: brand lockup in one corner, the
+   play control as the single strong element, duration opposite it. */
+  /* The logo is the backdrop: contained, off-centre and dimmed by a wash so
+     the play control stays the one strong element. */
   .guide-visual {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    min-height: 130px;
-    margin-bottom: 19px;
-    border-radius: 13px;
-    background: linear-gradient(130deg, #d9efe3, #f8eed1);
-    color: var(--navy);
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    background-image:
+      linear-gradient(105deg, rgba(17, 44, 60, .88) 0%, rgba(8, 103, 71, .72) 55%, rgba(8, 103, 71, .34) 100%),
+      url("/fnph-logo.png"),
+      linear-gradient(150deg, var(--navy), var(--green-deep));
+    background-repeat: no-repeat;
+    background-position: center, 78% 50%, center;
+    background-size: cover, 42% auto, cover;
   }
 
-  .guide-visual small {
-    font-weight: 800;
-  }
+.guide-brand {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #eaf5f0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
 
+.guide-brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  object-fit: contain;
+}
+
+.play-disc {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding-left: 3px;
+  border-radius: 50%;
+  font-size: 0.95rem;
+  color: #06281f;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(3, 20, 15, 0.35);
+  transition: transform 160ms ease;
+}
+
+.guide-visual:hover .play-disc {
+  transform: translate(-50%, -50%) scale(1.07);
+}
+
+.guide-caption {
+  position: absolute;
+  bottom: 14px;
+  left: 16px;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.guide-length {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(3, 20, 15, 0.55);
+  color: #d9ece4;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
   .play-disc {
-    display: grid;
-    place-items: center;
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    background: var(--green);
-    color: #fff;
-    box-shadow: 0 8px 18px rgba(8, 123, 89, .22);
+    transition: none;
   }
+  .guide-visual:hover .play-disc {
+    transform: translate(-50%, -50%);
+  }
+}
 
   .guide-card > small,
   .payment-card > small,
