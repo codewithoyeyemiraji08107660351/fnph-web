@@ -5,6 +5,7 @@ import type {
   ApprovalQueue,
   ApproveRequest,
   DoctorAvailability,
+  HubReviewRow,
   ReleaseBundle,
   ReleaseDeskRow,
   ReviewRow,
@@ -120,4 +121,13 @@ export const releaseApi = {
 
   queries: () =>
     api.list<ReviewRow>('/reviews/queries'),
+}
+
+/** Hub Coordinator oversight of one consultation. Keyed by appointment. */
+export const oversightApi = {
+  /** Every pharmacy and laboratory review, including verified ones with notes. */
+  reviews: (appointmentPublicId: string) =>
+    api.list<HubReviewRow>(
+      `/hub/appointments/${seg(appointmentPublicId)}/reviews`,
+    ),
 }

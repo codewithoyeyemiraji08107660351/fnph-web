@@ -21,6 +21,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/Toast'
 import { BundleStatusBadge } from './ReleaseDesk'
+import { ReviewsPanel } from './ReviewsPanel'
 
 function formatOptionalDate(value?: string | null) {
   if (!value) return '—'
@@ -917,6 +918,10 @@ export function ReleaseBundleView() {
           </Panel>
         )}
       </div>
+
+      {b.appointmentPublicId && (
+        <ReviewsPanel appointmentPublicId={b.appointmentPublicId} />
+      )}
 
       <ClinicalContents bundle={b.clinicalContent} />
 

@@ -630,6 +630,26 @@ export interface ReviewRow {
   documentPublicId?: string
 }
 
+/** clinical/api/HubOversightController.HubReviewRow */
+export type HubReviewState = 'UNASSIGNED' | 'NOT_OPENED' | 'IN_REVIEW' | 'SUBMITTED'
+
+export interface HubReviewRow {
+  reviewPublicId: string
+  reviewType: 'PHARMACY' | 'LABORATORY'
+  documentIssueNumber?: string | null
+  documentStatus?: string | null
+  reviewerName?: string | null
+  state: HubReviewState
+  outcome?: 'VERIFIED' | 'QUERY_RAISED' | null
+  notes?: string | null
+  queryRaised: boolean
+  queryDetail?: string | null
+  assignedAt?: IsoDateTime | null
+  openedAt?: IsoDateTime | null
+  submittedAt?: IsoDateTime | null
+  submittedToHubAt?: IsoDateTime | null
+}
+
 /** clinical/api/ReleaseBundleResponse */
 export type ReleaseBundleComponentType =
   | 'CLINICAL_NOTE'
@@ -753,6 +773,9 @@ export interface ReleaseBundle {
 
   releasedBy?: string | null
   releasedAt?: IsoDateTime | null
+
+  /** Null for centre bundles. Keys the hub oversight endpoints. */
+  appointmentPublicId?: string | null
 
   clinicalNote?: ReleaseClinicalNote | null
   prescriptions?: ReleasePrescription[]
