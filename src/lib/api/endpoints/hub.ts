@@ -11,6 +11,8 @@ import type {
   HubFollowUpRow,
   HubReviewRow,
   HubStats,
+  ReassignableRole,
+  ReassignRequest,
   TeamResponse,
   WorkflowBoard,
   WorkflowStage,
@@ -168,6 +170,17 @@ export const oversightApi = {
   /** Current team plus every change, newest first. */
   team: (appointmentPublicId: string) =>
     api.get<TeamResponse>(`/hub/appointments/${seg(appointmentPublicId)}/team`),
+
+  /**
+   * Assign or replace one team member after approval. Gated on
+   * appointment.assign_team (and assign_doctor for DOCTOR). Open pharmacy or
+   * laboratory reviews move with the role. Returns the team as it now stands.
+   */
+  reassign: (appointmentPublicId: string, role: ReassignableRole, body: ReassignRequest) =>
+    api.post<TeamResponse>(
+      `/hub/appointments/${seg(appointmentPublicId)}/team/${seg(role)}`,
+      body,
+    ),
 
   /** Newest first. Rows sharing editGroup were saved together. */
   edits: (appointmentPublicId: string) =>

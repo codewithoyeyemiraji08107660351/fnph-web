@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 
-import type { TeamRole, WorkflowStage } from '@/lib/api/types'
+import type { ReassignableRole, TeamRole, WorkflowStage } from '@/lib/api/types'
 
 export const oversightKeys = {
   reviews: (appointmentPublicId: string) => ['hub-reviews', appointmentPublicId] as const,
@@ -23,6 +23,30 @@ export function useRefreshOversight(appointmentPublicId: string) {
     ])
 }
 
+/**
+ * After a team change. The team, its reviews and the timeline change on this
+ * consultation, and the desk, bundle and dashboard counts all move with them.
+ */
+export function useRefreshAfterTeamChange() {
+  const qc = useQueryClient()
+  return (appointmentPublicId: string) =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: oversightKeys.team(appointmentPublicId) }),
+      qc.invalidateQueries({ queryKey: oversightKeys.reviews(appointmentPublicId) }),
+      qc.invalidateQueries({ queryKey: oversightKeys.timeline(appointmentPublicId) }),
+      ...['bundle', 'release-desk', 'hub-board', 'hub-stats', 'hub-activity', 'hub-upcoming', 'hub-day'].map((key) =>
+        qc.invalidateQueries({ queryKey: [key] }),
+      ),
+    ])
+}
+
+/**
+ * How often the hub's live panels re-read the server, and whether coming back
+ * to the tab triggers a read. The app default (no focus refetch, 30 s stale)
+ * suits reference data, not a desk that other people are changing.
+ */
+export const LIVE = { refetchInterval: 30_000, refetchOnWindowFocus: true, staleTime: 10_000 } as const
+
 /** Labels for the edit history. Keys match the backend field names. */
 export const FIELD_LABEL: Record<string, string> = {
   notes: 'Notes',
@@ -44,6 +68,15 @@ export const ROLE_LABEL: Record<TeamRole, string> = {
   LABORATORY: 'Laboratory technician',
   HIM: 'HIM officer',
   ROOM: 'Room',
+}
+
+/** The account role code a person must hold to fill each team role. */
+export const ROLE_CODE: Record<ReassignableRole, string> = {
+  DOCTOR: 'DOCTOR',
+  NURSE: 'NURSING',
+  PHARMACIST: 'PHARMACIST',
+  LABORATORY: 'LABORATORY_TECHNICIAN',
+  HIM: 'HIM',
 }
 
 export const STAGE_LABEL: Record<WorkflowStage, string> = {

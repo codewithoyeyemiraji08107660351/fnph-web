@@ -15,7 +15,8 @@ import { EmptyState, ErrorState, Panel } from '@/components/ui/Page'
 import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/Toast'
 
-import { oversightKeys, REASON_MIN, useRefreshOversight } from './oversight'
+import { LIVE, oversightKeys, REASON_MIN, useRefreshOversight } from './oversight'
+import { ReassignDialog } from './ReassignDialog'
 
 const TYPE_LABEL: Record<HubReviewRow['reviewType'], string> = {
   PHARMACY: 'Pharmacy',
@@ -164,14 +165,23 @@ function EditReviewDialog({
   )
 }
 
+/** A replaced or withdrawn document: nothing left to verify, so nothing to move. */
+function retired(review: HubReviewRow) {
+  return ['SUPERSEDED', 'REVOKED', 'EXPIRED'].includes(review.documentStatus ?? '')
+}
+
 function ReviewItem({
   review,
   canEdit,
   onEdit,
+  canReassign,
+  onReassign,
 }: {
   review: HubReviewRow
   canEdit: boolean
   onEdit: () => void
+  canReassign: boolean
+  onReassign: () => void
 }) {
   return (
     <li className="px-5 py-4">
@@ -195,14 +205,19 @@ function ReviewItem({
               <i aria-hidden className="bi bi-pencil" /> Edit
             </button>
           )}
+          {canReassign && review.state !== 'SUBMITTED' && !retired(review) && (
+            <button type="button" className="btn btn-quiet btn-sm" onClick={onReassign}>
+              <i aria-hidden className="bi bi-arrow-left-right" /> {review.state === 'UNASSIGNED' ? 'Assign' : 'Reassign'}
+            </button>
+          )}
         </div>
       </div>
 
       {review.state === 'UNASSIGNED' && (
         <Alert tone="warning" className="mt-3">
-          Nobody is assigned to this review, so the bundle cannot complete. Assign a{' '}
-          {review.reviewType === 'PHARMACY' ? 'pharmacist' : 'laboratory technician'} on the
-          appointment's team.
+          Nobody is assigned to this review, so it is in nobody's queue and the bundle cannot
+          complete. Assign a {review.reviewType === 'PHARMACY' ? 'pharmacist' : 'laboratory technician'}
+          {canReassign ? ' with the button above.' : ' on the appointment\'s team.'}
         </Alert>
       )}
 
@@ -232,14 +247,17 @@ function ReviewItem({
 
 /**
  * Every pharmacy and laboratory review on one consultation. A coordinator
- * holding hub.clinical_edit can correct a submitted review's notes.
+ * holding hub.clinical_edit can correct a submitted review's notes; one
+ * holding appointment.assign_team can move a waiting review to someone else.
  */
 export function ReviewsPanel({ appointmentPublicId }: { appointmentPublicId: string }) {
   const { can } = useAuth()
   const [editing, setEditing] = useState<HubReviewRow | null>(null)
+  const [reassigning, setReassigning] = useState<HubReviewRow['reviewType'] | null>(null)
   const reviews = useQuery({
     queryKey: oversightKeys.reviews(appointmentPublicId),
     queryFn: () => oversightApi.reviews(appointmentPublicId),
+    ...LIVE,
   })
 
   const count = reviews.data?.length ?? 0
@@ -273,9 +291,19 @@ export function ReviewsPanel({ appointmentPublicId }: { appointmentPublicId: str
               review={review}
               canEdit={can('hub.clinical_edit')}
               onEdit={() => setEditing(review)}
+              canReassign={can('appointment.assign_team')}
+              onReassign={() => setReassigning(review.reviewType)}
             />
           ))}
         </ul>
+      )}
+
+      {reassigning && (
+        <ReassignDialog
+          appointmentPublicId={appointmentPublicId}
+          role={reassigning === 'PHARMACY' ? 'PHARMACIST' : 'LABORATORY'}
+          onClose={() => setReassigning(null)}
+        />
       )}
 
       {editing && (

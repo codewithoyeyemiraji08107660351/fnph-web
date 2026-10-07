@@ -834,7 +834,9 @@ export interface ActivityPage {
 
 /** scheduling/api/TeamHistoryController */
 export type TeamRole = 'DOCTOR' | 'NURSE' | 'PHARMACIST' | 'LABORATORY' | 'HIM' | 'ROOM'
-export type TeamChangeSource = 'APPROVAL' | 'ASSIGNMENT' | 'ROOM_CHANGE' | 'RESCHEDULE' | 'BACKFILL'
+export type TeamChangeSource = 'APPROVAL' | 'ASSIGNMENT' | 'ROOM_CHANGE' | 'RESCHEDULE' | 'BACKFILL' | 'REASSIGNMENT'
+/** The roles the coordinator can reassign. The room has its own screen. */
+export type ReassignableRole = Exclude<TeamRole, 'ROOM'>
 
 export interface TeamMember {
   role: TeamRole
@@ -858,8 +860,23 @@ export interface TeamEventRow {
 
 export interface TeamResponse {
   appointmentReference: string
+  appointmentStatus: string
   current: TeamMember[]
   history: TeamEventRow[]
+  /** Roles the coordinator can change now. */
+  changeable: ReassignableRole[]
+  /** Why each other role is locked. */
+  locked: Partial<Record<ReassignableRole, string>>
+  /** Unsubmitted reviews that move with the pharmacist or laboratory role. */
+  openReviews: Partial<Record<'PHARMACIST' | 'LABORATORY', number>>
+  appointmentDate?: IsoDateTime | null
+  scheduledEndAt?: IsoDateTime | null
+}
+
+/** TeamHistoryController.ReassignRequest */
+export interface ReassignRequest {
+  userPublicId: string
+  reason: string
 }
 
 /** clinical/api/HubOversightController.HubReviewRow */
@@ -1086,6 +1103,22 @@ export interface ReleaseDeskRow {
   ehrNumber: string
   doctorName?: string
   outstanding: string[]
+  /** Reviews still waiting, and submitted ones that raised a concern. */
+  openReviews: DeskReview[]
+}
+
+/** ReleaseController.OpenReview */
+export type DeskReviewState = 'UNASSIGNED' | 'NOT_OPENED' | 'IN_PROGRESS' | 'QUERY_RAISED'
+
+export interface DeskReview {
+  reviewPublicId: string
+  reviewType: 'PHARMACY' | 'LABORATORY'
+  documentNumber?: string | null
+  reviewerPublicId?: string | null
+  reviewerName?: string | null
+  state: DeskReviewState
+  assignedAt?: IsoDateTime | null
+  openedAt?: IsoDateTime | null
 }
 
 /** document/api/DocumentResponse */

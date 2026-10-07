@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/Toast'
 import { BundleStatusBadge } from './ReleaseDesk'
 import { EditHistoryPanel } from './EditHistoryPanel'
 import { FollowUpsPanel } from './FollowUpsPanel'
+import { LIVE } from './oversight'
 import { ReviewsPanel } from './ReviewsPanel'
 import { TeamPanel } from './TeamPanel'
 
@@ -690,6 +691,8 @@ export function ReleaseBundleView() {
     queryKey: ['bundle', bundleId],
     queryFn: () => releaseApi.get(bundleId),
     enabled: Boolean(bundleId),
+    // Reviews land and team members change while this is open.
+    ...LIVE,
   })
 
   const [notes, setNotes] = useState('')
