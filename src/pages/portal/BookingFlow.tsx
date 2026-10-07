@@ -3,8 +3,8 @@ import { Link, Navigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { bookingApi, carePathApi, intakeApi, type IntakeDraft } from '@/lib/api/endpoints/patient'
 import { patientRecordsApi } from '@/lib/api/endpoints/records'
-import type { Appointment } from '@/lib/api/types'
-import { StopScreen } from '@/features/patient/SafetyStep'
+import type { Appointment, TriageHistoryItem, TriageResult } from '@/lib/api/types'
+import { StopScreen, TriageStep } from '@/features/patient/SafetyStep'
 import { IntakeStep } from '@/features/patient/IntakeStep'
 import { CalendarStep } from '@/features/patient/CalendarStep'
 import { ErrorState } from '@/components/ui/Page'
@@ -21,11 +21,19 @@ export function BookingFlow() {
   const [step,setStep]=useState<'start'|'intake'|'payment'|'schedule'>('start')
   const [draft,setDraft]=useState<IntakeDraft|null>(null)
   const [appointment,setAppointment]=useState<Appointment|null>(null)
+  const [retakingTriage,setRetakingTriage]=useState(false)
   if(receipt.isLoading || saved.isLoading || appointments.isLoading || patient.isLoading || triage.isLoading) return <p>Loading your care information…</p>
   if(receipt.isError || saved.isError || appointments.isError || patient.isError || triage.isError) return <ErrorState error={receipt.error ?? saved.error ?? appointments.error ?? patient.error ?? triage.error} onRetry={() => {void receipt.refetch();void saved.refetch();void appointments.refetch();void patient.refetch();void triage.refetch()}} />
   if(!receipt.data?.publicId || !triage.data?.length) return <Navigate to="/portal/onboarding" replace />
   const latestTriage = triage.data[0]
-  if(latestTriage.outcome !== 'PROCEED') return <StopScreen result={latestTriage} />
+  // The latest answer decides. A stopped patient can answer again once the
+  // questions no longer apply; every answer is kept and the Hub is alerted
+  // when a pass follows a recent stop.
+  const recordTriage = (result: TriageResult) => qc.setQueryData<TriageHistoryItem[]>(['triage-history'], (old) => [{ ...result, version: 'completed', submittedAt: new Date().toISOString() }, ...(old ?? [])])
+  if(latestTriage.outcome !== 'PROCEED') {
+    if(retakingTriage) return <TriageStep retake onProceed={(r) => {recordTriage(r);setRetakingTriage(false)}} onStop={(r) => {recordTriage(r);setRetakingTriage(false)}} />
+    return <StopScreen result={latestTriage} onRetake={() => setRetakingTriage(true)} />
+  }
   const syncedAppointment = appointment ?? appointments.data?.find(a => ['SLOT_HELD','AWAITING_APPROVAL','APPROVED','RESCHEDULED','IN_PROGRESS'].includes(a.status)) ?? null
   if(syncedAppointment) return <div className="status-card"><span className="status-icon amber">◷</span><span className="eyebrow">Request submitted</span><h1>{syncedAppointment.status === 'AWAITING_APPROVAL' ? 'Waiting for Hub Coordinator approval' : 'Your consultation is scheduled'}</h1><p>Your payment and selected appointment are linked. The care team can see the same booking status shown in your appointments.</p><p><b>{formatDateTime(syncedAppointment.appointmentDate)} WAT</b></p><p>Reference {syncedAppointment.reference}</p><Link className="button primary" to="/portal/appointments">View my appointment</Link></div>
   const currentStep = step === 'start' ? (saved.data ? 'payment' : 'intake') : step

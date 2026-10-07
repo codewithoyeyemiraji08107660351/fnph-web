@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { carePathApi } from '@/lib/api/endpoints/patient'
 import { patientRecordsApi } from '@/lib/api/endpoints/records'
-import type { TriageResult } from '@/lib/api/types'
+import type { TriageHistoryItem, TriageResult } from '@/lib/api/types'
 import { ErrorState } from '@/components/ui/Page'
 import { PatientConsent } from './PatientConsent'
 import { PatientRecordBanner } from './PatientRecordBanner'
@@ -17,6 +17,7 @@ export function PatientOnboarding() {
   const triage = useQuery({ queryKey: ['triage-history'], queryFn: carePathApi.triageHistory })
   const patient = useQuery({ queryKey: ['my-record'], queryFn: patientRecordsApi.me })
   const [stopped, setStopped] = useState<TriageResult | null>(null)
+  const [retaking, setRetaking] = useState(false)
 
   if (receipt.isLoading || triage.isLoading || patient.isLoading) return <p>Loading your first-time setup…</p>
   if (receipt.isError || triage.isError || patient.isError) {
@@ -34,18 +35,31 @@ export function PatientOnboarding() {
   if (!receipt.data?.publicId) {
     return <>{banner}<PatientConsent onDone={() => { void receipt.refetch() }} /></>
   }
-  if (stopped) {
-    return <>{banner}<StopScreen result={stopped} /><Link className="button secondary mt-4" to="/portal">Go to my dashboard</Link></>
+  // The latest answer decides. A stop is not permanent: the patient can answer
+  // again once the questions no longer apply, and every answer is kept.
+  const latest = triage.data?.[0]
+  const shownStop: Pick<TriageResult, 'escalation' | 'stopReason'> | null =
+    stopped ?? (latest && latest.outcome !== 'PROCEED' ? latest : null)
+  const record = (result: TriageResult) =>
+    qc.setQueryData<TriageHistoryItem[]>(['triage-history'], (old) => [
+      { ...result, version: 'completed', submittedAt: new Date().toISOString() },
+      ...(old ?? []),
+    ])
+
+  if (shownStop && !retaking) {
+    return <>{banner}<StopScreen result={shownStop} onRetake={() => setRetaking(true)} /><Link className="button secondary mt-4" to="/portal">Go to my dashboard</Link></>
   }
-  if (!triage.data?.length) {
+  if (!latest || latest.outcome !== 'PROCEED' || retaking) {
     return <>{banner}<TriageStep
+      retake={!!shownStop}
       onProceed={(result) => {
-        qc.setQueryData(['triage-history'], [{ ...result, version: 'completed', submittedAt: new Date().toISOString() }])
+        record(result)
         navigate('/portal', { replace: true })
       }}
       onStop={(result) => {
+        record(result)
         setStopped(result)
-        qc.setQueryData(['triage-history'], [{ ...result, version: 'completed', submittedAt: new Date().toISOString() }])
+        setRetaking(false)
       }}
     /></>
   }
