@@ -51,6 +51,7 @@ export const MySupport = lazy(() => import('@/pages/support/MySupport').then((m)
 // Remaining integrations
 export const DocumentsAdmin = lazy(() => import('@/pages/admin/DocumentsAdmin').then((m) => ({ default: m.DocumentsAdmin })))
 export const HubToday = lazy(() => import('@/pages/hub/Today').then((m) => ({ default: m.Today })))
+export const HubDashboard = lazy(() => import('@/pages/hub/dashboard/HubDashboard').then((m) => ({ default: m.HubDashboard })))
 export const Cancellations = lazy(() => import('@/pages/hub/Cancellations').then((m) => ({ default: m.Cancellations })))
 export const PatientRecords = lazy(() => import('@/pages/records/PatientRecords').then((m) => ({ default: m.PatientRecords })))
 export const Drift = lazy(() => import('@/pages/records/Drift').then((m) => ({ default: m.Drift })))

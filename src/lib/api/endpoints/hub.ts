@@ -20,6 +20,8 @@ import type {
   ReviewRow,
   RoomOption,
   StaffOption,
+  ActivityGroup,
+  ActivityPage,
 } from '../types'
 
 export const approvalsApi = {
@@ -186,7 +188,23 @@ export const dashboardApi = {
     to?: string
     stage?: WorkflowStage
     q?: string
+    /** asc lists soonest first, for an upcoming list. */
+    order?: 'asc' | 'desc'
     page?: number
     size?: number
   } = {}) => api.get<WorkflowBoard>('/hub/workflow', { params }),
+
+  /** Newest first. Repeat group for several; page with the previous nextBefore. */
+  activity: (params: {
+    from?: string
+    to?: string
+    group?: ActivityGroup[]
+    before?: string
+    limit?: number
+  } = {}) =>
+    api.get<ActivityPage>('/hub/activity', {
+      params,
+      // group=APPROVED&group=REJECTED, which Spring binds to a List.
+      paramsSerializer: { indexes: null },
+    }),
 }

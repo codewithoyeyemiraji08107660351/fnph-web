@@ -66,6 +66,7 @@ import {
   MySupport,
   DocumentsAdmin,
   HubToday,
+  HubDashboard,
   Cancellations,
   PatientRecords,
   Drift,
@@ -124,7 +125,7 @@ const phase2Routes = [
     { path: '*', element: <Navigate to="/portal" replace /> },
   ], 'portal'),
   workspace(['HUB_COORDINATOR'], [
-    { index: true, element: <Navigate to="/hub/approvals" replace /> },
+    { index: true, element: gated('release_bundle.read', <HubDashboard />) },
     { path: 'approvals', element: gated('appointment.read', <Approvals />) },
     { path: 'approvals/:appointmentId', element: gated('appointment.read', <Approvals />) },
     { path: 'releases', element: gated('release_bundle.read', <ReleaseDesk />) },

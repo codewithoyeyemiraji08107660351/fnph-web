@@ -57,6 +57,7 @@ export const ROLES: RoleDefinition[] = [
   {
     code: 'HUB_COORDINATOR', name: 'Hub Coordinator', portal: 'core', route: '/hub', phase: 2, live: true,
     nav: [
+            { to: '/hub', label: 'Dashboard', icon: 'bi-speedometer2', permission: 'release_bundle.read', end: true },
       { to: '/hub/approvals', label: 'Approvals', icon: 'bi-inbox', permission: 'appointment.read' },
       { to: '/hub/centre-approvals', label: 'Centre requests', icon: 'bi-buildings', permission: 'appointment.read' },
       { to: '/hub/releases', label: 'Release desk', icon: 'bi-send-check', permission: 'release_bundle.read' },

@@ -723,10 +723,16 @@ export interface WorkflowBoard {
 
 /** GET /hub/stats */
 export interface HubStats {
+  /** YYYY-MM-DD, hospital days, inclusive */
   from: string
   to: string
+  /** Queues as they stand right now. Ignores the window. */
   now: {
     awaitingApproval: number
+    /** When the longest-waiting request reached the desk. */
+    oldestAwaitingSince?: IsoDateTime | null
+    upcoming: number
+    upcomingNext7Days: number
     sessionsToday: number
     inSession: number
     reviewsUnassigned: number
@@ -738,26 +744,92 @@ export interface HubStats {
     followUpsToSchedule: number
     followUpsOverdue: number
   }
+  /** Counted when each thing happened inside the window. */
   period: {
-    consultations: number
+    requests: number
+    approved: number
+    rejected: number
+    /** Percent. Absent when there were no decisions. */
+    approvalRate?: number | null
+    rescheduled: number
+    cancelled: number
+    sessionsHeld: number
     completed: number
     noShows: number
-    cancelled: number
-    rejected: number
     released: number
     queriesRaised: number
     hubEdits: number
-    avgHoursBookedToApproved?: number | null
+    /** Consultations dated inside the window, by current status. */
+    scheduledByStatus: Partial<Record<AppointmentStatus, number>>
+    avgHoursRequestToDecision?: number | null
     avgHoursReviewTurnaround?: number | null
     avgHoursSessionToRelease?: number | null
   }
-  daily: Array<{ date: string; approved: number; completed: number; released: number }>
+  daily: HubStatsDay[]
   workload: Array<{
     role: Exclude<TeamRole, 'ROOM'>
     name: string
     consultations: number
     reviewsPending: number
   }>
+}
+
+export interface HubStatsDay {
+  date: string
+  requests: number
+  approved: number
+  rejected: number
+  completed: number
+  released: number
+}
+
+/** hub/HubActivityService */
+export type ActivityGroup =
+  | 'REQUESTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CHANGED'
+  | 'SESSION'
+  | 'TEAM'
+  | 'REVIEW'
+  | 'RELEASE'
+  | 'EDIT'
+
+export type ActivityType =
+  | 'BOOKING_REQUESTED'
+  | 'RESCHEDULED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'NO_SHOW'
+  | 'SESSION_STARTED'
+  | 'SESSION_ENDED'
+  | 'TEAM_CHANGED'
+  | 'REVIEW_SUBMITTED'
+  | 'QUERY_RAISED'
+  | 'RELEASED'
+  | 'RELEASE_HELD'
+  | 'HUB_EDIT'
+
+export interface ActivityItem {
+  at: IsoDateTime
+  type: ActivityType
+  group: ActivityGroup
+  appointmentPublicId?: string | null
+  reference?: string | null
+  patientName?: string | null
+  title: string
+  detail?: string | null
+  actor?: string | null
+}
+
+/** GET /hub/activity */
+export interface ActivityPage {
+  from: string
+  to: string
+  items: ActivityItem[]
+  /** Pass back as `before` for the next page. Absent on the last page. */
+  nextBefore?: IsoDateTime | null
 }
 
 /** scheduling/api/TeamHistoryController */
