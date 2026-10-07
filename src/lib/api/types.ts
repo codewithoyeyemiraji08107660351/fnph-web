@@ -630,6 +630,166 @@ export interface ReviewRow {
   documentPublicId?: string
 }
 
+/** hub/WorkflowStage. Derived on read; nothing stores it. */
+export type WorkflowStage =
+  | 'PAYMENT'
+  | 'APPROVAL'
+  | 'SCHEDULED'
+  | 'IN_SESSION'
+  | 'DOCUMENTATION'
+  | 'REVIEWS'
+  | 'AWAITING_RELEASE'
+  | 'HELD'
+  | 'FOLLOW_UP'
+  | 'CLOSED'
+  | 'ENDED'
+
+/** hub/HubWorkflowService.TeamNames. Room is the room code. */
+export interface TeamNames {
+  doctor?: string | null
+  nurse?: string | null
+  pharmacist?: string | null
+  laboratory?: string | null
+  him?: string | null
+  room?: string | null
+}
+
+export type TimelineCategory =
+  | 'BOOKING'
+  | 'TEAM'
+  | 'SESSION'
+  | 'CLINICAL'
+  | 'REVIEW'
+  | 'RELEASE'
+  | 'FOLLOW_UP'
+  | 'EDIT'
+
+export interface TimelineEvent {
+  at: IsoDateTime
+  category: TimelineCategory
+  title: string
+  detail?: string | null
+  actor?: string | null
+}
+
+/** Minutes between milestones. Absent when either end has not happened. */
+export interface WorkflowDurations {
+  bookedToApproved?: number | null
+  approvedToSessionStart?: number | null
+  sessionLength?: number | null
+  sessionEndToRelease?: number | null
+}
+
+/** GET /hub/appointments/{id}/timeline */
+export interface WorkflowTimeline {
+  appointmentPublicId: string
+  reference: string
+  patientName?: string | null
+  appointmentDate: IsoDateTime
+  status: string
+  stage: WorkflowStage
+  team: TeamNames
+  durations: WorkflowDurations
+  events: TimelineEvent[]
+}
+
+export interface BoardRow {
+  appointmentPublicId: string
+  reference: string
+  patientName?: string | null
+  ehrNumber?: string | null
+  appointmentDate: IsoDateTime
+  status: string
+  stage: WorkflowStage
+  team: TeamNames
+  reviews: { total: number; pending: number; unassigned: number; queries: number }
+  bundlePublicId?: string | null
+  bundleStatus?: string | null
+  followUpStatus?: string | null
+}
+
+/** GET /hub/workflow */
+export interface WorkflowBoard {
+  /** YYYY-MM-DD, hospital days, inclusive */
+  from: string
+  to: string
+  /** Whole window, whatever stage filter is applied. */
+  stageCounts: Partial<Record<WorkflowStage, number>>
+  total: number
+  page: number
+  size: number
+  rows: BoardRow[]
+}
+
+/** GET /hub/stats */
+export interface HubStats {
+  from: string
+  to: string
+  now: {
+    awaitingApproval: number
+    sessionsToday: number
+    inSession: number
+    reviewsUnassigned: number
+    reviewsPending: number
+    queriesOpen: number
+    bundlesIncomplete: number
+    bundlesReady: number
+    bundlesHeld: number
+    followUpsToSchedule: number
+    followUpsOverdue: number
+  }
+  period: {
+    consultations: number
+    completed: number
+    noShows: number
+    cancelled: number
+    rejected: number
+    released: number
+    queriesRaised: number
+    hubEdits: number
+    avgHoursBookedToApproved?: number | null
+    avgHoursReviewTurnaround?: number | null
+    avgHoursSessionToRelease?: number | null
+  }
+  daily: Array<{ date: string; approved: number; completed: number; released: number }>
+  workload: Array<{
+    role: Exclude<TeamRole, 'ROOM'>
+    name: string
+    consultations: number
+    reviewsPending: number
+  }>
+}
+
+/** scheduling/api/TeamHistoryController */
+export type TeamRole = 'DOCTOR' | 'NURSE' | 'PHARMACIST' | 'LABORATORY' | 'HIM' | 'ROOM'
+export type TeamChangeSource = 'APPROVAL' | 'ASSIGNMENT' | 'ROOM_CHANGE' | 'RESCHEDULE' | 'BACKFILL'
+
+export interface TeamMember {
+  role: TeamRole
+  publicId?: string | null
+  /** The person, or the room code. Absent when nobody holds the role. */
+  name?: string | null
+  /** The room's name. */
+  detail?: string | null
+}
+
+export interface TeamEventRow {
+  eventPublicId?: string | null
+  role: TeamRole
+  fromLabel?: string | null
+  toLabel?: string | null
+  source: TeamChangeSource
+  reason?: string | null
+  changedBy: string
+  changedAt: IsoDateTime
+}
+
+export interface TeamResponse {
+  appointmentReference: string
+  current: TeamMember[]
+  history: TeamEventRow[]
+}
+
 /** clinical/api/HubOversightController.HubReviewRow */
 export type HubReviewState = 'UNASSIGNED' | 'NOT_OPENED' | 'IN_REVIEW' | 'SUBMITTED'
 
@@ -648,6 +808,64 @@ export interface HubReviewRow {
   openedAt?: IsoDateTime | null
   submittedAt?: IsoDateTime | null
   submittedToHubAt?: IsoDateTime | null
+  /** Send back unchanged as expectedUpdatedAt when editing. */
+  updatedAt?: IsoDateTime | null
+}
+
+export type FollowUpStatus = 'NOT_REQUIRED' | 'RECOMMENDED' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+export type FollowUpMode = 'VIDEO' | 'AUDIO' | 'PHONE_FALLBACK'
+
+/** clinical/api/HubOversightController.HubFollowUpRow */
+export interface HubFollowUpRow {
+  followUpPublicId: string
+  recommendation?: string | null
+  reviewInterval?: string | null
+  expectedTimeframe?: string | null
+  /** YYYY-MM-DD */
+  preferredDate?: string | null
+  /** HH:mm:ss */
+  preferredTime?: string | null
+  consultationMode?: FollowUpMode | null
+  status: FollowUpStatus
+  scheduledDate?: string | null
+  completedDate?: string | null
+  notes?: string | null
+  /** False when the doctor recorded no follow-up as needed. */
+  editable: boolean
+  updatedAt?: IsoDateTime | null
+}
+
+export interface EditReviewBody {
+  notes: string | null
+  queryDetail: string | null
+  reason: string
+  expectedUpdatedAt: IsoDateTime | null
+}
+
+export interface EditFollowUpBody {
+  preferredDate: string | null
+  preferredTime: string | null
+  consultationMode: FollowUpMode | null
+  status: FollowUpStatus
+  scheduledDate: string | null
+  completedDate: string | null
+  notes: string | null
+  reason: string
+  expectedUpdatedAt: IsoDateTime | null
+}
+
+/** clinical/api/HubOversightController.EditRevisionRow */
+export interface EditRevisionRow {
+  revisionPublicId: string
+  editGroup: string
+  targetType: 'REVIEW' | 'FOLLOW_UP'
+  targetPublicId: string
+  fieldName: string
+  oldValue?: string | null
+  newValue?: string | null
+  reason: string
+  editedBy: string
+  editedAt: IsoDateTime
 }
 
 /** clinical/api/ReleaseBundleResponse */

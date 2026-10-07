@@ -5,7 +5,16 @@ import type {
   ApprovalQueue,
   ApproveRequest,
   DoctorAvailability,
+  EditFollowUpBody,
+  EditReviewBody,
+  EditRevisionRow,
+  HubFollowUpRow,
   HubReviewRow,
+  HubStats,
+  TeamResponse,
+  WorkflowBoard,
+  WorkflowStage,
+  WorkflowTimeline,
   ReleaseBundle,
   ReleaseDeskRow,
   ReviewRow,
@@ -130,4 +139,54 @@ export const oversightApi = {
     api.list<HubReviewRow>(
       `/hub/appointments/${seg(appointmentPublicId)}/reviews`,
     ),
+
+  /** Gated on hub.clinical_edit. 409 when the review changed since it was loaded. */
+  editReview: (appointmentPublicId: string, reviewPublicId: string, body: EditReviewBody) =>
+    api.put<HubReviewRow>(
+      `/hub/appointments/${seg(appointmentPublicId)}/reviews/${seg(reviewPublicId)}`,
+      body,
+    ),
+
+  followUps: (appointmentPublicId: string) =>
+    api.list<HubFollowUpRow>(
+      `/hub/appointments/${seg(appointmentPublicId)}/follow-ups`,
+    ),
+
+  /** Full replacement of the scheduling fields. Gated on hub.clinical_edit. */
+  editFollowUp: (appointmentPublicId: string, followUpPublicId: string, body: EditFollowUpBody) =>
+    api.put<HubFollowUpRow>(
+      `/hub/appointments/${seg(appointmentPublicId)}/follow-ups/${seg(followUpPublicId)}`,
+      body,
+    ),
+
+  /** Booking to follow-up, oldest first, with stage, team and durations. */
+  timeline: (appointmentPublicId: string) =>
+    api.get<WorkflowTimeline>(`/hub/appointments/${seg(appointmentPublicId)}/timeline`),
+
+  /** Current team plus every change, newest first. */
+  team: (appointmentPublicId: string) =>
+    api.get<TeamResponse>(`/hub/appointments/${seg(appointmentPublicId)}/team`),
+
+  /** Newest first. Rows sharing editGroup were saved together. */
+  edits: (appointmentPublicId: string) =>
+    api.list<EditRevisionRow>(
+      `/hub/appointments/${seg(appointmentPublicId)}/edits`,
+    ),
+}
+
+/** Hub Coordinator dashboard. Dates are hospital days, YYYY-MM-DD, inclusive. */
+export const dashboardApi = {
+  /** Defaults to the last 30 days. */
+  stats: (params: { from?: string; to?: string } = {}) =>
+    api.get<HubStats>('/hub/stats', { params }),
+
+  /** Defaults to 30 days back and 14 ahead. At most 92 days. */
+  workflow: (params: {
+    from?: string
+    to?: string
+    stage?: WorkflowStage
+    q?: string
+    page?: number
+    size?: number
+  } = {}) => api.get<WorkflowBoard>('/hub/workflow', { params }),
 }

@@ -21,7 +21,10 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/Toast'
 import { BundleStatusBadge } from './ReleaseDesk'
+import { EditHistoryPanel } from './EditHistoryPanel'
+import { FollowUpsPanel } from './FollowUpsPanel'
 import { ReviewsPanel } from './ReviewsPanel'
+import { TeamPanel } from './TeamPanel'
 
 function formatOptionalDate(value?: string | null) {
   if (!value) return '—'
@@ -920,7 +923,12 @@ export function ReleaseBundleView() {
       </div>
 
       {b.appointmentPublicId && (
-        <ReviewsPanel appointmentPublicId={b.appointmentPublicId} />
+        <>
+          <TeamPanel appointmentPublicId={b.appointmentPublicId} />
+          <ReviewsPanel appointmentPublicId={b.appointmentPublicId} />
+          <FollowUpsPanel appointmentPublicId={b.appointmentPublicId} />
+          <EditHistoryPanel appointmentPublicId={b.appointmentPublicId} />
+        </>
       )}
 
       <ClinicalContents bundle={b.clinicalContent} />
