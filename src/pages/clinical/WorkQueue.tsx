@@ -11,6 +11,7 @@ import { ReasonDialog } from '@/components/ui/ReasonDialog'
 import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/Toast'
 import { VitalsList } from './VitalsList'
+import { TranscribeVitalsDialog } from './TranscribeVitalsDialog'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { AttachedFiles } from '@/features/files/AttachedFiles'
 import { useNow } from '@/lib/hooks/useNow'
@@ -18,7 +19,7 @@ import { useNow } from '@/lib/hooks/useNow'
 const COPY: Record<QueueKind, { title: string; description: string; completeLabel: string }> = {
   nursing: {
     title: 'Nursing preparation',
-    description: 'Check the patient-reported readings, enter them in the offline EHR, confirm the room, then mark preparation complete.',
+    description: 'Check the patient-reported readings, enter them in the offline EHR, confirm the room, then mark preparation complete. When a patient sent a photo of their readings instead, enter them from the photo first.',
     completeLabel: 'Mark preparation complete',
   },
   him: {
@@ -34,6 +35,7 @@ function Row({ kind, row, onChanged }: { kind: QueueKind; row: WorkQueueRow; onC
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [raising, setRaising] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
   const now = useNow(60_000)
   const soon = (parseServerTime(row.appointmentDate)?.getTime() ?? Infinity) - now < 60 * 60_000
   const done = row.state === 'TREATED'
@@ -61,7 +63,11 @@ function Row({ kind, row, onChanged }: { kind: QueueKind; row: WorkQueueRow; onC
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <WorkStateBadge state={row.state} />
-            {kind === 'nursing' && (row.vitalsRecorded ? <Badge tone="green">Readings submitted</Badge> : <Badge tone={soon ? 'red' : 'gold'}>{soon ? 'Readings missing, starts soon' : 'Readings not submitted'}</Badge>)}
+            {kind === 'nursing' && (row.vitalsRecorded
+              ? <Badge tone="green">Readings submitted</Badge>
+              : (row.vitalsFiles ?? 0) > 0
+                ? <Badge tone={soon ? 'red' : 'gold'}>Readings sent as a file, enter them</Badge>
+                : <Badge tone={soon ? 'red' : 'gold'}>{soon ? 'Readings missing, starts soon' : 'Readings not submitted'}</Badge>)}
           </div>
           {row.exceptionReason && <p className="mt-2 rounded-[10px] bg-blush px-3 py-2 text-sm text-alarm-700">Issue raised: {row.exceptionReason}</p>}
         </div>
@@ -83,6 +89,11 @@ function Row({ kind, row, onChanged }: { kind: QueueKind; row: WorkQueueRow; onC
                 {COPY[kind].completeLabel}
               </button>
             )}
+            {kind === 'nursing' && (row.vitalsFiles ?? 0) > 0 && can('vitals.verify') && can('upload.read') && (
+              <button type="button" className={`btn btn-sm ${row.vitalsRecorded ? 'btn-quiet' : 'btn-secondary'}`} disabled={busy} onClick={() => setTranscribing(true)}>
+                <i aria-hidden className="bi bi-image" /> {row.vitalsRecorded ? 'Enter more readings' : 'Enter readings from file'}
+              </button>
+            )}
             <button type="button" className="btn btn-quiet btn-sm" disabled={busy} onClick={() => setRaising(true)}>Raise an issue</button>
           </div>
         )}
@@ -90,7 +101,7 @@ function Row({ kind, row, onChanged }: { kind: QueueKind; row: WorkQueueRow; onC
       {kind === 'nursing' && (
         <>
           <button type="button" className="btn btn-quiet btn-sm mt-2 -ml-3" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-            <i aria-hidden className={`bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}`} /> {open ? 'Hide readings' : 'Show readings'}
+            <i aria-hidden className={`bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}`} /> {open ? 'Hide readings and files' : 'Show readings and files'}
           </button>
           {open && (
             <div className="mt-2 space-y-3">
@@ -99,6 +110,15 @@ function Row({ kind, row, onChanged }: { kind: QueueKind; row: WorkQueueRow; onC
             </div>
           )}
         </>
+      )}
+      {transcribing && (
+        <TranscribeVitalsDialog
+          appointmentPublicId={row.appointmentPublicId}
+          reference={row.reference}
+          patientName={row.patientName}
+          onClose={() => setTranscribing(false)}
+          onDone={() => { setTranscribing(false); onChanged() }}
+        />
       )}
       {raising && (
         <ReasonDialog

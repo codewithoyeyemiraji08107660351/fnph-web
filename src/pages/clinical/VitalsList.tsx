@@ -39,7 +39,7 @@ export function VitalsList({
 
   if (vitals.isLoading) return <Spinner label="Loading readings" />
   if (vitals.isError) return <p className="text-sm text-alarm">{toApiError(vitals.error).message}</p>
-  if (!vitals.data?.length) return <p className="text-sm text-muted">The patient has not submitted readings yet.</p>
+  if (!vitals.data?.length) return <p className="text-sm text-muted">No readings entered yet. If the patient sent a photo or PDF of them, it is with the files.</p>
 
   return (
     <div className="space-y-3">
@@ -94,7 +94,7 @@ export function VitalsList({
             })}
           </dl>
 
-          {v.notes && <p className="mt-3 text-sm text-muted">Patient note: {v.notes}</p>}
+          {v.notes && <p className="mt-3 text-sm text-muted">{v.notes.startsWith('Transcribed by ') ? v.notes : `Patient note: ${v.notes}`}</p>}
         </div>
       ))}
     </div>

@@ -3,9 +3,16 @@ import { intakeApi, type IntakeDraft, type PatientIntake } from '@/lib/api/endpo
 import { uploadsApi } from '@/lib/api/endpoints/records'
 import { toApiError } from '@/lib/api/http'
 import type { VitalsInput } from '@/lib/api/types'
+import { parseServerTime, serverToWatInput, watInputToServer } from '@/lib/format'
 
 export function IntakeStep({ initial, onSaved }: { initial?: IntakeDraft | null; onSaved: (draft: IntakeDraft) => void }) {
-  const [form, setForm] = useState<PatientIntake>(initial?.intake ?? { reason: '', context: '', mode: 'VIDEO', vitals: {}, evidenceIds: [], laboratoryIds: [] })
+  // The saved draft holds measuredAt as server time (UTC); the input shows WAT.
+  const [form, setForm] = useState<PatientIntake>(() => {
+    const saved = initial?.intake
+    if (!saved) return { reason: '', context: '', mode: 'VIDEO', vitals: {}, evidenceIds: [], laboratoryIds: [] }
+    const at = parseServerTime(saved.vitals?.measuredAt)
+    return { ...saved, vitals: saved.vitals ? { ...saved.vitals, measuredAt: at ? serverToWatInput(at) : undefined } : saved.vitals }
+  })
   const [clinic, setClinic] = useState('')
   const [route, setRoute] = useState(form.vitals ? 'measured' : 'upload')
   const [busy, setBusy] = useState(false)
@@ -24,7 +31,7 @@ export function IntakeStep({ initial, onSaved }: { initial?: IntakeDraft | null;
     } catch (err) { setError(toApiError(err).message) } finally { setUploading(false) }
   }
   return <><div className="screen-heading"><span className="eyebrow">Consultation request</span><h1>Tell the team what you need</h1><p>Provide the reason for follow-up and recent vital signs. You may add a laboratory result or supporting information when available.</p></div>
-    <form className="card form-card" onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { onSaved(await intakeApi.save({ ...form, context: [clinic && `Usual clinic: ${clinic}`, form.context].filter(Boolean).join('\n'), vitals: route === 'measured' ? form.vitals : null, evidenceIds: route === 'upload' ? form.evidenceIds : [] })) } catch (err) { setError(toApiError(err).message) } finally { setBusy(false) } }}>
+    <form className="card form-card" onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { onSaved(await intakeApi.save({ ...form, context: [clinic && `Usual clinic: ${clinic}`, form.context].filter(Boolean).join('\n'), vitals: route === 'measured' ? { ...form.vitals, measuredAt: watInputToServer(form.vitals?.measuredAt) } : null, evidenceIds: route === 'upload' ? form.evidenceIds : [] })) } catch (err) { setError(toApiError(err).message) } finally { setBusy(false) } }}>
       <div className="form-grid"><label className="span-all">Main reason for this consultation<textarea required maxLength={4000} rows={3} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder="Briefly explain your follow-up concern" /></label><label>Usual FNPH clinic (optional)<input value={clinic} onChange={e => setClinic(e.target.value)} placeholder="Clinic or unit, if known" /></label><label>When were your vital signs taken?<input type="datetime-local" required={route === 'measured'} value={form.vitals?.measuredAt ?? ''} onChange={e => setForm({ ...form, vitals: { ...form.vitals, measuredAt: e.target.value } })} /></label></div>
       <div className="section-divider"><span>Required recent vital signs</span><small>Enter measured values or choose the document route. Use accurate, recent measurements.</small></div>
       <div className="choice-segment" role="radiogroup" aria-label="Vital sign submission method"><label><input type="radio" name="vitals-route" checked={route === 'measured'} onChange={() => setRoute('measured')} /> Enter measured values</label><label><input type="radio" name="vitals-route" checked={route === 'upload'} onChange={() => setRoute('upload')} /> Attach vital-sign document</label></div>

@@ -519,6 +519,8 @@ export interface WorkQueueRow {
   completedAt?: IsoDateTime
   exceptionReason?: string
   vitalsRecorded: boolean
+  /** Photos or PDFs of readings the patient sent instead of typing them. */
+  vitalsFiles?: number
 }
 
 /** ClinicalReadController#doctorQueue */
@@ -1306,4 +1308,123 @@ export interface TriageHistoryItem {
   stopReason?: string
   escalation?: string
   submittedAt: IsoDateTime
+}
+
+/* ---------------- staff work history (staff/api/StaffWorkController) ---------------- */
+
+export type WorkRole = 'DOCTOR' | 'NURSE' | 'PHARMACIST' | 'LABORATORY' | 'HIM'
+
+export interface WorkMetric {
+  key: string
+  label: string
+  value?: number | null
+  format: 'count' | 'hours' | 'minutes' | 'percent'
+  tone?: 'alarm' | 'warn' | null
+  hint?: string | null
+  /** When the oldest item behind the number started waiting. */
+  since?: IsoDateTime | null
+}
+
+export interface WorkSummary {
+  role: WorkRole
+  roles: WorkRole[]
+  person: { publicId: string; name: string }
+  from: string
+  to: string
+  now: WorkMetric[]
+  period: WorkMetric[]
+  measures: Array<{ key: string; label: string; noun: string }>
+  daily: Array<{ date: string; values: Record<string, number> }>
+}
+
+export interface WorkConsultationItem {
+  kind: 'CONSULTATION'
+  appointmentPublicId: string
+  reference: string
+  appointmentDate: IsoDateTime
+  patientName: string
+  ehrNumber: string
+  status: string
+  consultationPublicId?: string | null
+  startedAt?: IsoDateTime | null
+  endedAt?: IsoDateTime | null
+  minutes?: number | null
+  outcome?: string | null
+  noteSigned: boolean
+  noteSignedAt?: IsoDateTime | null
+  prescriptions: number
+  investigations: number
+  followUp: boolean
+  bundleStatus?: string | null
+}
+
+export interface WorkReviewItem {
+  kind: 'REVIEW'
+  reviewPublicId: string
+  reviewType: 'PHARMACY' | 'LABORATORY'
+  documentNumber?: string | null
+  documentStatus?: string | null
+  appointmentPublicId?: string | null
+  reference?: string | null
+  appointmentDate?: IsoDateTime | null
+  patientName?: string | null
+  ehrNumber?: string | null
+  assignedAt?: IsoDateTime | null
+  openedAt?: IsoDateTime | null
+  submittedAt?: IsoDateTime | null
+  outcome?: string | null
+  queryRaised: boolean
+  turnaroundHours?: number | null
+  state: 'NOT_OPENED' | 'IN_PROGRESS' | 'SUBMITTED' | 'QUERY_RAISED' | 'WITHDRAWN'
+}
+
+/** An HIM record retrieval (RECORD) or a nurse's preparation (PREPARATION). */
+export interface WorkRecordItem {
+  kind: 'RECORD' | 'PREPARATION'
+  appointmentPublicId: string
+  reference: string
+  appointmentDate: IsoDateTime
+  patientName: string
+  ehrNumber: string
+  status: string
+  state: WorkState
+  startedAt?: IsoDateTime | null
+  completedAt?: IsoDateTime | null
+  exceptionReason?: string | null
+  hoursBeforeSession?: number | null
+  /** Nurses only: vitals records on the appointment. */
+  readings?: number | null
+  room?: string | null
+}
+
+export interface WorkVerificationItem {
+  kind: 'VERIFICATION'
+  requestPublicId: string
+  ehrNumberClaimed: string
+  fullName: string
+  status: 'RESOLVED' | 'REJECTED'
+  submittedAt?: IsoDateTime | null
+  resolvedAt?: IsoDateTime | null
+  hoursToResolve?: number | null
+}
+
+export type WorkItem = WorkConsultationItem | WorkReviewItem | WorkRecordItem | WorkVerificationItem
+
+export interface WorkPage {
+  role: WorkRole
+  kind: 'CONSULTATIONS' | 'PREPARATIONS' | 'REVIEWS' | 'RECORDS' | 'VERIFICATIONS'
+  total: number
+  page: number
+  size: number
+  items: WorkItem[]
+}
+
+export interface StaffWorkRow {
+  publicId: string
+  name: string
+  role: WorkRole
+  done: number
+  doneLabel: string
+  waiting: number
+  waitingLabel: string
 }

@@ -56,3 +56,6 @@ export const Cancellations = lazy(() => import('@/pages/hub/Cancellations').then
 export const PatientRecords = lazy(() => import('@/pages/records/PatientRecords').then((m) => ({ default: m.PatientRecords })))
 export const Drift = lazy(() => import('@/pages/records/Drift').then((m) => ({ default: m.Drift })))
 export const PendingCodes = lazy(() => import('@/pages/records/PendingCodes').then((m) => ({ default: m.PendingCodes })))
+export const StaffWork = lazy(() => import('@/pages/hub/StaffWork').then((m) => ({ default: m.StaffWork })))
+export const StaffMember = lazy(() => import('@/pages/hub/StaffMember').then((m) => ({ default: m.StaffMember })))
+export const MyWork = lazy(() => import('@/pages/work/MyWork').then((m) => ({ default: m.MyWork })))

@@ -14,6 +14,7 @@ import type {
   PrescriptionItem,
   ReviewRow,
   TerminationReason,
+  VitalsInput,
   VitalsReading,
   WorkQueueRow,
 } from '../types'
@@ -29,6 +30,9 @@ export const workQueueApi = {
     api.post<unknown>(`/queues/${kind}/${seg(id)}/exception`, null, { params: { reason } }),
   vitals: (appointmentPublicId: string) => api.list<VitalsReading>(`/clinical/vitals/appointments/${seg(appointmentPublicId)}`),
   verifyVitals: (vitalsPublicId: string) => api.post<VitalsReading>(`/clinical/vitals/${seg(vitalsPublicId)}/verify`),
+  /** Nurse enters the readings from the patient's uploaded photo or PDF. Gated on vitals.verify. */
+  transcribeVitals: (appointmentPublicId: string, readings: VitalsInput, sourceUploadIds: string[]) =>
+    api.post<VitalsReading>(`/clinical/vitals/appointments/${seg(appointmentPublicId)}/transcribe`, { readings, sourceUploadIds }),
   doctorQueue: () => api.list<DoctorQueueRow>('/clinical/queues/doctor'),
   centreQueue: () => api.list<CentreDoctorRow>('/clinical/centre-consultations/mine'),
 }

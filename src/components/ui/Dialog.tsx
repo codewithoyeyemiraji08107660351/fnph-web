@@ -7,7 +7,7 @@ interface DialogProps {
   description?: ReactNode
   children: ReactNode
   footer?: ReactNode
-  size?: 'md' | 'lg'
+  size?: 'md' | 'lg' | 'xl'
   /** Blocks closing with Escape or the backdrop while a request is running. */
   busy?: boolean
 }
@@ -34,7 +34,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
       onClick={(e) => {
         if (e.target === ref.current && !busy) onClose()
       }}
-      className={`m-auto w-[calc(100%-1.5rem)] ${size === 'lg' ? 'max-w-3xl' : 'max-w-lg'} rounded-[22px] border border-line bg-white p-0 text-ink shadow-[var(--shadow-lift)] backdrop:bg-navy-900/45 backdrop:backdrop-blur-[2px]`}
+      className={`m-auto w-[calc(100%-1.5rem)] ${size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-3xl' : 'max-w-lg'} rounded-[22px] border border-line bg-white p-0 text-ink shadow-[var(--shadow-lift)] backdrop:bg-navy-900/45 backdrop:backdrop-blur-[2px]`}
     >
       {open && (
         <div className="flex max-h-[min(88dvh,860px)] flex-col">

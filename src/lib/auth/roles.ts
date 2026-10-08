@@ -67,6 +67,7 @@ export const ROLES: RoleDefinition[] = [
       { to: '/hub/patients', label: 'Patients', icon: 'bi-person-vcard', permission: 'patient.read' },
       { to: '/hub/codes', label: 'Enrolment desk', icon: 'bi-hourglass-split', permission: 'enrolment.release_code' },
       { to: '/hub/documents', label: 'Issued documents', icon: 'bi-file-earmark-check', permission: 'document.read' },
+      { to: '/hub/staff', label: 'Team work', icon: 'bi-people', permission: 'release_bundle.read' },
     ],
     responsibilities: [
       'Approve or reject booking requests and assign room, doctor and team',
@@ -76,7 +77,10 @@ export const ROLES: RoleDefinition[] = [
   },
   {
     code: 'DOCTOR', name: 'Doctor', portal: 'core', route: '/clinical', phase: 2, live: true,
-    nav: workspace('/clinical', 'My consultations', 'bi-camera-video'),
+    nav: [
+      { to: '/clinical', label: 'My consultations', icon: 'bi-camera-video', end: true },
+      { to: '/clinical/work', label: 'My work', icon: 'bi-bar-chart-line' },
+    ],
     responsibilities: [
       'Pre-review assigned appointments, vitals and uploaded results',
       'Run the 30-minute video consultation with controlled audio fallback',
@@ -87,6 +91,7 @@ export const ROLES: RoleDefinition[] = [
     code: 'PHARMACIST', name: 'Pharmacist', portal: 'core', route: '/reviews/pharmacy', phase: 2, live: true,
     nav: [
       { to: '/reviews/pharmacy', label: 'Pharmacy reviews', icon: 'bi-capsule', end: true },
+      { to: '/reviews/pharmacy/work', label: 'My work', icon: 'bi-bar-chart-line' },
       { to: '/reviews/pharmacy/documents', label: 'Check a document', icon: 'bi-file-earmark-check', permission: 'document.read' },
     ],
     responsibilities: ['Transcribe and verify prescriptions from the offline EHR', 'Submit reviewed prescriptions to the Hub Coordinator'],
@@ -95,19 +100,24 @@ export const ROLES: RoleDefinition[] = [
     code: 'LABORATORY_TECHNICIAN', name: 'Laboratory Technician', portal: 'core', route: '/reviews/laboratory', phase: 2, live: true,
     nav: [
       { to: '/reviews/laboratory', label: 'Laboratory reviews', icon: 'bi-droplet-half', end: true },
+      { to: '/reviews/laboratory/work', label: 'My work', icon: 'bi-bar-chart-line' },
       { to: '/reviews/laboratory/documents', label: 'Check a document', icon: 'bi-file-earmark-check', permission: 'document.read' },
     ],
     responsibilities: ['Transcribe and review investigation requests', 'Submit reviewed requests to the Hub Coordinator'],
   },
   {
     code: 'NURSING', name: 'Nurse', portal: 'core', route: '/queues/nursing', phase: 2, live: true,
-    nav: workspace('/queues/nursing', 'Nursing queue', 'bi-heart-pulse'),
+    nav: [
+      { to: '/queues/nursing', label: 'Nursing queue', icon: 'bi-heart-pulse', end: true },
+      { to: '/queues/nursing/work', label: 'My work', icon: 'bi-bar-chart-line' },
+    ],
     responsibilities: ['Enter patient-submitted vitals in the offline EHR', 'Assign the matching room and mark preparation complete'],
   },
   {
     code: 'HIM', name: 'Health Information Management', portal: 'core', route: '/queues/him', phase: 2, live: true,
     nav: [
       { to: '/queues/him', label: 'Records queue', icon: 'bi-folder2-open', end: true, permission: 'queue.him' },
+      { to: '/queues/him/work', label: 'My work', icon: 'bi-bar-chart-line' },
       { to: '/queues/him/verification', label: 'Enrolment checks', icon: 'bi-person-check', permission: 'ehr_verification.resolve' },
       { to: '/queues/him/exports', label: 'EHR exports', icon: 'bi-database', permission: 'ehr_import.read' },
       { to: '/queues/him/patients', label: 'Patients', icon: 'bi-person-vcard', permission: 'patient.read' },
