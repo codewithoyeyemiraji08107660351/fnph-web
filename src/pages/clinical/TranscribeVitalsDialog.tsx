@@ -13,7 +13,7 @@ import { TextAreaField, TextField } from '@/components/ui/Field'
 import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/Toast'
 import { ImagePane } from '@/features/files/FilePreview'
-import { isImageUpload } from '@/features/files/uploadimage'
+import { isImageUpload } from '@/features/files/uploadImage'
 
 type NumberKey = 'systolic' | 'diastolic' | 'heartRate' | 'temperature' | 'respiratoryRate' | 'bloodOxygen' | 'bloodGlucose' | 'weightKg' | 'heightCm'
 

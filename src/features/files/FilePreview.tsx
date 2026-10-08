@@ -5,7 +5,7 @@ import { saveBlob, type UploadRow } from '@/lib/api/endpoints/records'
 import { Dialog } from '@/components/ui/Dialog'
 import { Spinner } from '@/components/ui/Spinner'
 
-import { rotateImage, useUploadImage } from './uploadimage'
+import { rotateImage, useUploadImage } from './uploadImage'
 
 /**
  * The image itself, with rotate and zoom. Phone photos of a paper chart often

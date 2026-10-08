@@ -10,7 +10,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/Toast'
 
 import { FileThumbnail, ImageViewerDialog } from './FilePreview'
-import { isImageUpload } from './uploadimage'
+import { isImageUpload } from './uploadImage'
 
 const size = (b: number) => (b > 1_048_576 ? `${(b / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`)
 
