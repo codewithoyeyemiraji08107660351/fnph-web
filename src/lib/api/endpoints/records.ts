@@ -198,8 +198,23 @@ export const documentsAdminApi = {
   revoke: (publicId: string, reason: string) => api.post<unknown>(`/documents/${seg(publicId)}/revoke`, null, { params: { reason } }),
 }
 
+/** A follow-up the doctor recommended. Schedule fields are absent from older servers. */
+export interface MyFollowUp {
+  publicId: string
+  recommendation: string
+  reviewInterval?: string | null
+  expectedTimeframe?: string | null
+  preferredDate?: string | null
+  preferredTime?: string | null
+  consultationMode?: string | null
+  status?: 'NOT_REQUIRED' | 'RECOMMENDED' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | null
+  scheduledDate?: string | null
+  completedDate?: string | null
+  createdAt: string
+}
+
 export const followUpsApi = {
-  mine: () => api.list<{ publicId: string; recommendation: string; reviewInterval?: string; preferredDate?: string; createdAt: string }>('/clinical/follow-ups/mine'),
+  mine: () => api.list<MyFollowUp>('/clinical/follow-ups/mine'),
   get: (id: string) => api.get<{ publicId: string; recommendation: string; reviewInterval: string }>(`/clinical/follow-ups/${seg(id)}`),
 }
 
