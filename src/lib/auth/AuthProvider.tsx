@@ -96,6 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sessionEvents.removeEventListener(SESSION_EXPIRED, onExpired)
   }, [resetLocal])
 
+  // Keep the request layer told which workspace the session opens, including
+  // for a session started before the route was stored alongside it.
+  useEffect(() => {
+    if (supervision) setSupervisionSession(supervision.publicId, supervision.dashboardRoute)
+  }, [supervision])
+
   // A supervised session has a hard expiry on the server. Mirror it here.
   useEffect(() => {
     if (!supervision) return
@@ -140,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const startSupervision = useCallback(async (targetUserPublicId: string, reason: string) => {
     const session = await adminApi.supervision.start(targetUserPublicId, reason)
-    setSupervisionSession(session.publicId)
+    setSupervisionSession(session.publicId, session.dashboardRoute)
     sessionStorage.setItem(SUPERVISION_DETAIL_KEY, JSON.stringify(session))
     setSupervision(session)
     return session

@@ -17,9 +17,11 @@ const API_ROOT = `${(import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 */
 const REFRESH_KEY = 'fnph.session.rt'
 const SUPERVISION_KEY = 'fnph.session.viewAs'
+const SUPERVISION_ROUTE_KEY = 'fnph.session.viewAsRoute'
 
 let accessToken: string | null = null
 let supervisionSessionId: string | null = sessionStorage.getItem(SUPERVISION_KEY)
+let supervisionRoute: string | null = sessionStorage.getItem(SUPERVISION_ROUTE_KEY)
 
 export const tokenStore = {
   hasRefreshToken: () => Boolean(sessionStorage.getItem(REFRESH_KEY)),
@@ -38,10 +40,25 @@ export const tokenStore = {
   },
 }
 
-export function setSupervisionSession(id: string | null) {
+/**
+  The supervised session and the workspace it opens. The server runs a request
+  carrying the session header as the viewed account, read-only, so the header
+  is sent only from inside that workspace. The administrator's own screens
+  (/admin, account, sign-out) keep running as the administrator.
+*/
+export function setSupervisionSession(id: string | null, route?: string | null) {
   supervisionSessionId = id
+  supervisionRoute = id ? (route ?? null) : null
   if (id) sessionStorage.setItem(SUPERVISION_KEY, id)
   else sessionStorage.removeItem(SUPERVISION_KEY)
+  if (supervisionRoute) sessionStorage.setItem(SUPERVISION_ROUTE_KEY, supervisionRoute)
+  else sessionStorage.removeItem(SUPERVISION_ROUTE_KEY)
+}
+
+function inSupervisedWorkspace(): boolean {
+  if (!supervisionSessionId || !supervisionRoute) return false
+  const path = window.location.pathname
+  return path === supervisionRoute || path.startsWith(`${supervisionRoute}/`)
 }
 
 export function getSupervisionSessionId() {
@@ -111,7 +128,7 @@ export const http = axios.create({
 
 http.interceptors.request.use((config) => {
   if (accessToken) config.headers.set('Authorization', `Bearer ${accessToken}`)
-  if (supervisionSessionId) config.headers.set('X-View-As-Session', supervisionSessionId)
+  if (supervisionSessionId && inSupervisedWorkspace()) config.headers.set('X-View-As-Session', supervisionSessionId)
   return config
 })
 

@@ -61,7 +61,7 @@ export function Supervision() {
       <PageHeader
         kicker="Supervised access"
         title="View an authorised workspace"
-        description="Open another role’s workspace to answer a support question or review a workflow. Sessions last up to 30 minutes and every request made during one is recorded against it."
+        description="Open another role’s workspace to answer a support question or review a workflow. Sessions last up to 30 minutes and are read-only: you see exactly what that person sees, nothing can be changed on their behalf, and every screen you open is recorded against the session."
       />
       {state.notice && <Alert tone="info" className="mb-5">{state.notice}</Alert>}
 
