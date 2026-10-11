@@ -215,16 +215,15 @@ function Card({ a, highlighted }: { a: Appointment; highlighted: boolean }) {
           {canJoin && (
             <Link
               to={`/portal/consultations/${encodeURIComponent(a.publicId)}`}
-              className="btn btn-primary no-underline flex min-h-[48px] items-center gap-2 px-5 text-base font-extrabold shadow-sm"
-              aria-label="Join your consultation now"
+              className="btn btn-primary min-h-12 px-5 text-base"
             >
-              <i aria-hidden className="bi bi-camera-video-fill text-lg" />
-              <span>Join Consultation Now</span>
+              <i aria-hidden className="bi bi-camera-video-fill" />
+              <span>Join consultation now</span>
             </Link>
           )}
 
         {held && (
-          <Link to="/portal/booking" className="btn btn-primary no-underline ">
+          <Link to="/portal/booking" className="btn btn-primary">
             Finish booking
           </Link>
         )}
@@ -344,11 +343,10 @@ export function Appointments() {
         actions={
           <Link
             to="/portal/booking"
-            className="btn btn-primary no-underline flex min-h-[48px] items-center gap-2 px-5 text-base font-extrabold text-white shadow-sm"
-            aria-label="Book a new consultation"
+            className="btn btn-primary min-h-12 px-5 text-base"
           >
-            <i aria-hidden className="bi bi-calendar-plus-fill text-lg" />
-            <span>Book a New Consultation</span>
+            <i aria-hidden className="bi bi-calendar-plus" />
+            <span>Book a new consultation</span>
           </Link>
         }
       />

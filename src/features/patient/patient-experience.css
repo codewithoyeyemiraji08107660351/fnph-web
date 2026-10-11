@@ -4543,3 +4543,339 @@
     }
   }
 }
+
+/* ============================================================
+   Patient profile. Shares the home page tokens (.pd2): a locked
+   identity record above, the editable contact form below.
+   ============================================================ */
+@scope (.patient-experience) {
+  .pp {
+    max-width: 920px;
+  }
+
+  .pd2-notice.is-success {
+    border-color: #bfe0cd;
+    border-left-color: var(--pd-green);
+    background: var(--pd-mint);
+  }
+
+  .pd2-notice.is-success > i {
+    color: var(--pd-green);
+  }
+
+  .pp-status {
+    align-items: center;
+    margin: 0 0 18px !important;
+  }
+
+  /* Verified identity */
+  .pp-identity {
+    border: 1px solid var(--pd-line);
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .pp-person {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 22px;
+    background: var(--pd-navy);
+  }
+
+  .pp-avatar {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--pd-navy);
+    font-family: var(--pd-display);
+    font-size: 1.2rem;
+    font-weight: 800;
+  }
+
+  .pp-person h2 {
+    margin: 0 0 4px;
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 750;
+  }
+
+  .pp-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #9fd8bd;
+    font-size: .9rem;
+    font-weight: 600;
+  }
+
+  .pp-facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+  }
+
+  .pp-facts div {
+    min-width: 0;
+    padding: 16px 22px;
+  }
+
+  .pp-facts div + div {
+    border-left: 1px solid var(--pd-line);
+  }
+
+  .pp-facts dt {
+    color: var(--pd-muted);
+    font-size: .82rem;
+  }
+
+  .pp-facts dd {
+    max-width: none;
+    margin: 4px 0 0;
+    text-align: left;
+    color: var(--pd-navy);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .pp-mono {
+    font-family: var(--pd-display);
+    letter-spacing: .04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pp-lock {
+    display: flex;
+    gap: 10px;
+    margin: 0;
+    padding: 13px 22px;
+    border-top: 1px solid var(--pd-line);
+    background: #f7faf9;
+    color: var(--pd-muted);
+    font-size: .88rem;
+    line-height: 1.5;
+  }
+
+  .pp-lock i {
+    margin-top: 1px;
+    color: var(--pd-navy);
+  }
+
+  .pp-lock a {
+    color: var(--pd-green);
+    font-weight: 700;
+  }
+
+  /* Contact form */
+  .pp-form {
+    padding: 22px;
+    border: 1px solid var(--pd-line);
+    border-radius: 14px;
+    background: #fff;
+  }
+
+  .pp-form-head {
+    margin-bottom: 18px;
+  }
+
+  .pp-form-head p {
+    max-width: 62ch;
+    color: var(--pd-muted);
+    font-size: .92rem;
+  }
+
+  .pp-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 20px;
+  }
+
+  .pp-field {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .pp-field.is-wide {
+    grid-column: 1 / -1;
+  }
+
+  .pp-field label {
+    color: var(--pd-navy);
+    font-size: .92rem;
+    font-weight: 700;
+  }
+
+  .pp-field input:not([type="checkbox"]):not([type="radio"]) {
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+    min-height: 48px;
+    padding: 0 14px;
+    border: 1px solid #c4d3cf;
+    border-radius: 9px;
+    background: #fff;
+    color: var(--pd-ink);
+    font: inherit;
+    font-size: 1rem;
+  }
+
+  .pp-field input:hover {
+    border-color: #9fb9b1;
+  }
+
+  .pp-field input:focus {
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(8, 103, 71, .18);
+  }
+
+  .pp-field.has-error input:focus {
+    box-shadow: 0 0 0 3px rgba(164, 62, 54, .16);
+  }
+
+  .pp-field.has-error input,
+  .pp-field.has-error input:focus {
+    border-color: var(--pd-red) !important;
+    outline-color: rgba(164, 62, 54, .16);
+  }
+
+  .pp-hint,
+  .pp-error {
+    font-size: .84rem;
+    line-height: 1.45;
+  }
+
+  .pp-hint {
+    color: var(--pd-muted);
+  }
+
+  .pp-error {
+    color: var(--pd-red);
+    font-weight: 600;
+  }
+
+  .pp-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--pd-line);
+  }
+
+  .pp-actions .pd2-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+
+  .pp-saved {
+    color: var(--pd-muted);
+    font-size: .88rem;
+  }
+
+  /* Security link */
+  .pp-security {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    border: 1px solid var(--pd-line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--pd-navy);
+    text-decoration: none;
+  }
+
+  .pp-security:hover {
+    border-color: #a9c7bb;
+    background: #f7fbf9;
+  }
+
+  .pp-security > i:first-child {
+    color: var(--pd-green);
+    font-size: 1.25rem;
+  }
+
+  .pp-security span {
+    display: grid;
+    flex: 1;
+    gap: 2px;
+  }
+
+  .pp-security small {
+    color: var(--pd-muted);
+    font-size: .86rem;
+  }
+
+  .pp-security > i:last-child {
+    color: var(--pd-muted);
+  }
+
+  @media (max-width: 900px) {
+    .pp-facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pp-facts div:nth-child(3) {
+      border-left: 0;
+    }
+
+    .pp-facts div:nth-child(n + 3) {
+      border-top: 1px solid var(--pd-line);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .pp-facts,
+    .pp-fields {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pp-facts div + div {
+      border-left: 0;
+      border-top: 1px solid var(--pd-line);
+    }
+
+    .pp-person,
+    .pp-facts div,
+    .pp-lock,
+    .pp-form {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .pp-actions .pd2-btn {
+      width: 100%;
+    }
+  }
+}
+
+/* ============================================================
+   Button-styled links. The shared .btn classes live in a CSS layer,
+   so the unlayered `a { color }` rule above beat them and painted
+   green text on green buttons. Restate link colours here.
+   ============================================================ */
+@scope (.patient-experience) {
+  a.btn {
+    text-decoration: none;
+  }
+
+  a.btn-primary,
+  a.btn-primary:hover,
+  a.btn-danger,
+  a.btn-danger:hover {
+    color: #fff;
+  }
+
+  a.btn-secondary,
+  a.btn-quiet {
+    color: var(--color-accent, #075b45);
+  }
+}
