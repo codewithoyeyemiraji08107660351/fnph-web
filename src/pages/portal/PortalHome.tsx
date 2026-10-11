@@ -12,6 +12,9 @@ import { useNow } from '@/lib/hooks/useNow'
 import { formatDateTime, parseServerTime } from '@/lib/format'
 import { ErrorState } from '@/components/ui/Page'
 import {
+  careNotices,
+  countdownParts,
+  followUpTarget,
   greeting,
   hospitalToday,
   latestShown,
@@ -19,19 +22,48 @@ import {
   pickFollowUp,
   releaseState,
   shortDate,
-  startsIn,
+  todayLine,
+  watParts,
+  type CareNotice,
   type ReleaseState,
 } from './homeSummary'
 
 const LIVE_STATUSES = ['AWAITING_APPROVAL', 'APPROVED', 'IN_PROGRESS'] as const
 const JOINABLE_STATUSES = ['APPROVED', 'IN_PROGRESS'] as const
 const JOIN_GRACE_MS = 15 * 60 * 1000
-const LIST_LIMIT = 3
+const LIST_LIMIT = 4
 
 const STATE_LABEL: Record<ReleaseState, string> = {
   ready: 'Ready',
   expired: 'Expired',
   checking: 'Being checked',
+}
+
+const NOTICE_ICON: Record<CareNotice['tone'], string> = {
+  danger: 'bi-exclamation-octagon-fill',
+  warning: 'bi-exclamation-triangle-fill',
+  info: 'bi-info-circle-fill',
+}
+
+/** Days, hours, minutes, seconds. Read out once a minute, not every tick. */
+function Countdown({ ms, label }: { ms: number; label: string }) {
+  const p = countdownParts(ms)
+  const units: Array<[number, string]> = [
+    [p.days, p.days === 1 ? 'day' : 'days'],
+    [p.hours, p.hours === 1 ? 'hour' : 'hours'],
+    [p.minutes, p.minutes === 1 ? 'minute' : 'minutes'],
+    [p.seconds, p.seconds === 1 ? 'second' : 'seconds'],
+  ]
+  return (
+    <div className="pd2-count" role="timer" aria-label={`${label}: ${p.days} days, ${p.hours} hours, ${p.minutes} minutes`}>
+      {units.map(([n, unit], i) => (
+        <span key={unit} className="pd2-count-unit" aria-hidden>
+          <b>{i === 0 ? n : String(n).padStart(2, '0')}</b>
+          <small>{unit}</small>
+        </span>
+      ))}
+    </div>
+  )
 }
 
 export function PortalHome() {
@@ -111,329 +143,280 @@ export function PortalHome() {
 
   const today = hospitalToday(now)
   const due = pickFollowUp(followUps.data, today)
+  const dueAt = due ? followUpTarget(due) : null
   const rx = latestShown(prescriptions.data ?? undefined)
   const lab = latestShown(investigations.data ?? undefined)
   const approved =
     !!next && JOINABLE_STATUSES.includes(next.status as (typeof JOINABLE_STATUSES)[number])
-  const newDocuments = documents.data?.filter((d) => d.status === 'ACTIVE').length ?? 0
+  const readyDocuments = documents.data?.filter((d) => d.status === 'ACTIVE').length ?? 0
   const firstName = (principal?.displayName ?? '').split(' ')[0]
+  const leaf = next ? watParts(start) : null
+
+  const notices = careNotices({
+    today,
+    due,
+    hasUpcomingAppointment: !!next,
+    awaitingConfirmation:
+      next && next.status === 'AWAITING_APPROVAL' ? `${formatDateTime(next.appointmentDate)} WAT` : null,
+    prescription: rx,
+    investigation: lab,
+  })
+
+  const summary = [
+    !next
+      ? 'You have no appointment booked.'
+      : live
+        ? 'Your consultation room is open.'
+        : approved
+          ? 'Your next appointment is confirmed.'
+          : 'Your appointment request is waiting for confirmation.',
+    due?.date && due.days != null
+      ? due.days < 0
+        ? 'Your follow-up review is overdue.'
+        : due.days === 0
+          ? 'Your follow-up review is due today.'
+          : `Your follow-up review is in ${due.days} day${due.days === 1 ? '' : 's'}.`
+      : null,
+  ].filter(Boolean).join(' ')
 
   return (
-    <div className="pd">
-      <section className="pd-hello">
+    <div className="pd2">
+      {/* ---------- Header ---------- */}
+      <header className="pd2-head">
         <div>
+          <p className="pd2-date">{todayLine(now)}</p>
           <h1>
             {greeting(now)}
             {firstName ? `, ${firstName}` : ''}
           </h1>
-          <p>Everything about your care is on this page. Tap a box to see more.</p>
+          <p className="pd2-lede">{summary}</p>
         </div>
-        <Link className="button primary large" to="/portal/booking">
-          <i className="bi bi-calendar-plus" aria-hidden /> Book a consultation
-        </Link>
-      </section>
+        <div className="pd2-head-actions">
+          <Link className="pd2-btn pd2-btn-primary" to="/portal/booking">
+            <i className="bi bi-calendar-plus" aria-hidden /> Book a consultation
+          </Link>
+          <Link className="pd2-btn pd2-btn-quiet" to="/help">
+            Get help
+          </Link>
+        </div>
+      </header>
 
-      {/* ---------- 1. Next appointment ---------- */}
-      <section
-        className={`pd-next ${live ? 'is-live' : approved ? 'is-approved' : next ? 'is-waiting' : 'is-empty'}`}
-        aria-labelledby="pd-next-title"
-      >
-        <span className="pd-icon" aria-hidden>
-          <i className={`bi ${live ? 'bi-camera-video-fill' : 'bi-calendar-event'}`} />
-        </span>
-        <div className="pd-next-body">
-          <span className="pd-label" id="pd-next-title">
-            Your next appointment
-          </span>
+      {/* ---------- Needs attention ---------- */}
+      {notices.length > 0 && (
+        <section className="pd2-notices" aria-labelledby="pd2-notices-title">
+          <h2 id="pd2-notices-title" className="pd2-h2">Needs your attention</h2>
+          <ul>
+            {notices.map((n) => (
+              <li key={n.id} className={`pd2-notice is-${n.tone}`} role={n.tone === 'danger' ? 'alert' : undefined}>
+                <i className={`bi ${NOTICE_ICON[n.tone]}`} aria-hidden />
+                <div>
+                  <p className="pd2-notice-title">{n.title}</p>
+                  <p className="pd2-notice-body">{n.body}</p>
+                </div>
+                {n.action && (
+                  <Link className="pd2-notice-action" to={n.action.to}>
+                    {n.action.label}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ---------- Coming up ---------- */}
+      <section className="pd2-band" aria-labelledby="pd2-band-title">
+        <h2 id="pd2-band-title" className="pd2-sr">Coming up</h2>
+
+        {/* Appointment */}
+        <div className="pd2-slot">
+          <p className="pd2-slot-label">Next appointment</p>
           {appointments.isError ? (
             <ErrorState error={appointments.error} onRetry={() => appointments.refetch()} />
           ) : appointments.isLoading ? (
-            <strong>Loading…</strong>
-          ) : !next ? (
+            <p className="pd2-slot-quiet">Loading your appointments…</p>
+          ) : !next || !leaf ? (
             <>
-              <strong>You have no appointment booked</strong>
-              <p>When you need to see your doctor, tap “Book a consultation”.</p>
-            </>
-          ) : live ? (
-            <>
-              <strong>Your doctor is ready. Join now.</strong>
-              <p>
-                {formatDateTime(next.appointmentDate)} WAT{next.room ? ` · ${next.room}` : ''}
-              </p>
+              <p className="pd2-slot-title">No appointment booked</p>
+              <p className="pd2-slot-quiet">Book a consultation when you need to see your doctor. Times are shown from the hospital’s published calendar.</p>
+              <Link className="pd2-btn pd2-btn-light" to="/portal/booking">Book a consultation</Link>
             </>
           ) : (
             <>
-              <strong>{formatDateTime(next.appointmentDate)} WAT</strong>
-              <p>
-                {approved ? (
-                  start > now ? (
-                    <>
-                      Starts <b className="pd-tick">{startsIn(start - now)}</b>
-                    </>
-                  ) : (
-                    'Your appointment time has arrived'
-                  )
-                ) : (
-                  'Booked. Waiting for the hospital to confirm it.'
-                )}
-                {next.room ? ` · ${next.room}` : ''}
-              </p>
-              <span className="pd-ref">Reference {next.reference}</span>
+              <div className="pd2-when">
+                <span className="pd2-leaf" aria-hidden>
+                  <small>{leaf.weekday}</small>
+                  <b>{leaf.day}</b>
+                  <small>{leaf.month}</small>
+                </span>
+                <div>
+                  <p className="pd2-slot-title">{leaf.time} WAT</p>
+                  <p className="pd2-slot-quiet">
+                    {live ? 'Your doctor is ready' : approved ? 'Confirmed' : 'Waiting for the hospital to confirm'}
+                    {next.room ? `, ${next.room}` : ''}
+                  </p>
+                  <p className="pd2-ref">Reference {next.reference}</p>
+                </div>
+              </div>
+              {live ? (
+                <Link className="pd2-join" to={`/portal/consultations/${next.publicId}`}>
+                  <span className="pd2-live-dot" aria-hidden /> Join consultation now
+                </Link>
+              ) : approved && start > now ? (
+                <>
+                  <Countdown ms={start - now} label="Time until your appointment" />
+                  <Link className="pd2-link-light" to="/portal/appointments">View appointment details</Link>
+                </>
+              ) : (
+                <Link className="pd2-link-light" to="/portal/appointments">View appointment details</Link>
+              )}
             </>
           )}
         </div>
-        {next && live ? (
-          <Link className="live-button live pd-join" to={`/portal/consultations/${next.publicId}`}>
-            <span className="live-signal">
-              <i /> LIVE
-            </span>
-            <span>
-              <b>Join consultation</b>
-              <small>Tap to enter the video room</small>
-            </span>
-          </Link>
-        ) : next ? (
-          <Link className="button secondary" to="/portal/appointments">
-            See appointment
-          </Link>
-        ) : (
-          <Link className="button primary" to="/portal/booking">
-            Book now
-          </Link>
-        )}
-      </section>
 
-      {/* ---------- 2. At a glance ---------- */}
-      <h2 className="pd-section">Your care at a glance</h2>
-      <div className="pd-tiles">
         {/* Follow-up */}
-        <section className="pd-tile" aria-labelledby="pd-fu-title">
-          <header>
-            <span className="pd-icon soft" aria-hidden>
-              <i className="bi bi-arrow-repeat" />
-            </span>
-            <span className="pd-label" id="pd-fu-title">
-              Next follow-up
-            </span>
-          </header>
+        <div className="pd2-slot">
+          <p className="pd2-slot-label">Follow-up review</p>
           {followUps.isError ? (
-            <p className="pd-muted">Could not load your follow-up. Reload to try again.</p>
+            <p className="pd2-slot-quiet">Your follow-up could not be loaded. Reload the page to try again.</p>
           ) : !due ? (
             <>
-              <p className="pd-big-text">No follow-up yet</p>
-              <p className="pd-muted">Your doctor will tell you when to come back.</p>
+              <p className="pd2-slot-title">None scheduled</p>
+              <p className="pd2-slot-quiet">After a consultation your doctor will say when they want to see you again. The date will appear here.</p>
             </>
-          ) : due.days == null ? (
+          ) : !due.date || dueAt == null ? (
             <>
-              <p className="pd-big-text">Your doctor wants to see you again</p>
-              <p className="pd-quote">{due.followUp.recommendation}</p>
+              <p className="pd2-slot-title">Your doctor wants to see you again</p>
+              {due.followUp.recommendation && <p className="pd2-advice">{due.followUp.recommendation}</p>}
             </>
           ) : (
             <>
-              <div className="pd-count" aria-live="polite">
-                {due.days > 0 ? (
-                  <>
-                    <b>{due.days}</b>
-                    <span>
-                      {due.days === 1 ? 'day' : 'days'} to go{due.estimated ? ' (about)' : ''}
-                    </span>
-                  </>
-                ) : due.days === 0 ? (
-                  <b className="pd-today">Today</b>
-                ) : (
-                  <>
-                    <b className="pd-overdue">{Math.abs(due.days)}</b>
-                    <span>{Math.abs(due.days) === 1 ? 'day' : 'days'} overdue</span>
-                  </>
-                )}
-              </div>
-              <p className="pd-muted">
+              <p className="pd2-slot-title">
                 {due.estimated ? 'Around ' : ''}
-                {due.date ? longDate(due.date) : ''}
-                {due.scheduled ? ' · booked by the hospital' : ''}
+                {longDate(due.date)}
               </p>
-              {due.followUp.recommendation && (
-                <p className="pd-quote">{due.followUp.recommendation}</p>
+              <p className="pd2-slot-quiet">
+                {due.scheduled ? 'Booked by the hospital' : due.estimated ? 'Estimated from the review period your doctor gave' : 'Date set by your doctor'}
+              </p>
+              {dueAt > now ? (
+                <Countdown ms={dueAt - now} label="Time until your follow-up review" />
+              ) : (
+                <p className="pd2-overdue">
+                  {due.days != null && due.days < 0
+                    ? `Overdue by ${Math.abs(due.days)} day${Math.abs(due.days) === 1 ? '' : 's'}`
+                    : 'Due today'}
+                </p>
               )}
+              {due.followUp.recommendation && <p className="pd2-advice">{due.followUp.recommendation}</p>}
             </>
           )}
-          {due && (
-          <div className="pd-tile-foot">
-            {!due.scheduled && !next ? (
-              <Link className="button primary" to="/portal/booking">
-                Book my follow-up
-              </Link>
+        </div>
+      </section>
+
+      {/* ---------- Current treatment ---------- */}
+      <section className="pd2-ledger" aria-labelledby="pd2-ledger-title">
+        <div className="pd2-ledger-head">
+          <h2 id="pd2-ledger-title" className="pd2-h2">Your current treatment</h2>
+          <Link className="pd2-text-link" to="/portal/documents">
+            Prescriptions and lab requests
+            {readyDocuments > 0 ? ` (${readyDocuments} ready)` : ''}
+          </Link>
+        </div>
+
+        <div className="pd2-ledger-cols">
+          {/* Medicines */}
+          <div className="pd2-col">
+            <div className="pd2-col-head">
+              <h3>Medicines</h3>
+              {rx && <span className={`pd2-pill is-${releaseState(rx.status)}`}>{STATE_LABEL[releaseState(rx.status)]}</span>}
+            </div>
+            {prescriptions.isError ? (
+              <p className="pd2-muted">Your prescription could not be loaded. Reload the page to try again.</p>
+            ) : prescriptions.isLoading ? (
+              <p className="pd2-muted">Loading…</p>
+            ) : !rx ? (
+              <p className="pd2-muted">No prescription yet. Medicines your doctor prescribes will be listed here.</p>
+            ) : releaseState(rx.status) === 'checking' ? (
+              <p className="pd2-muted">Your new prescription is with the pharmacy for checking. The medicines will be listed here once it is released.</p>
             ) : (
-              <Link className="button secondary" to="/portal/documents">
-                Read doctor’s advice
-              </Link>
+              <>
+                <table className="pd2-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Medicine</th>
+                      <th scope="col">How often</th>
+                      <th scope="col">For how long</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rx.items.slice(0, LIST_LIMIT).map((i, n) => (
+                      <tr key={n}>
+                        <td>
+                          <b>{i.medication}</b>
+                          {i.strength && i.strength !== 'null' ? <span> {i.strength}</span> : null}
+                        </td>
+                        <td>{i.frequency && i.frequency !== 'null' ? i.frequency : 'As directed'}</td>
+                        <td>{i.duration && i.duration !== 'null' ? i.duration : 'As directed'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="pd2-foot">
+                  {rx.items.length > LIST_LIMIT ? `${rx.items.length - LIST_LIMIT} more on the full prescription. ` : ''}
+                  {releaseState(rx.status) === 'expired'
+                    ? `Expired${rx.expiryDate ? ` on ${shortDate(rx.expiryDate)}` : ''}.`
+                    : `Issued ${shortDate(rx.issueDate)}${rx.expiryDate ? `, valid until ${shortDate(rx.expiryDate)}` : ''}.`}
+                </p>
+              </>
             )}
           </div>
-          )}
-        </section>
 
-        {/* Prescription */}
-        <section className="pd-tile" aria-labelledby="pd-rx-title">
-          <header>
-            <span className="pd-icon soft" aria-hidden>
-              <i className="bi bi-capsule" />
-            </span>
-            <span className="pd-label" id="pd-rx-title">
-              My medicines
-            </span>
-            {rx && <span className={`pd-chip ${releaseState(rx.status)}`}>{STATE_LABEL[releaseState(rx.status)]}</span>}
-          </header>
-          {prescriptions.isError ? (
-            <p className="pd-muted">Could not load your prescription. Reload to try again.</p>
-          ) : prescriptions.isLoading ? (
-            <p className="pd-muted">Loading…</p>
-          ) : !rx ? (
-            <>
-              <p className="pd-big-text">No prescription yet</p>
-              <p className="pd-muted">Medicines your doctor prescribes will show here.</p>
-            </>
-          ) : releaseState(rx.status) === 'checking' ? (
-            <>
-              <p className="pd-big-text">Your prescription is being checked</p>
-              <p className="pd-muted">The pharmacy is checking it. You will see your medicines here once it is ready.</p>
-            </>
-          ) : (
-            <>
-              <ul className="pd-list">
-                {rx.items.slice(0, LIST_LIMIT).map((i, n) => (
-                  <li key={n}>
-                    <b>
-                      {i.medication}
-                      {i.strength ? ` ${i.strength}` : ''}
-                    </b>
-                    <span>{[i.frequency, i.duration].filter((x) => x && x !== 'null').join(' · ')}</span>
-                  </li>
-                ))}
-              </ul>
-              {rx.items.length > LIST_LIMIT && (
-                <p className="pd-muted">and {rx.items.length - LIST_LIMIT} more</p>
-              )}
-              <p className="pd-muted">
-                {releaseState(rx.status) === 'expired'
-                  ? `Expired${rx.expiryDate ? ` on ${shortDate(rx.expiryDate)}` : ''}. Ask your doctor before refilling.`
-                  : `Issued ${shortDate(rx.issueDate)}${rx.expiryDate ? ` · valid until ${shortDate(rx.expiryDate)}` : ''}`}
-              </p>
-            </>
-          )}
-          {rx && (
-          <div className="pd-tile-foot">
-            <Link className="button secondary" to="/portal/documents">
-              See prescription
-            </Link>
+          {/* Lab tests */}
+          <div className="pd2-col">
+            <div className="pd2-col-head">
+              <h3>Lab tests</h3>
+              {lab && <span className={`pd2-pill is-${releaseState(lab.status)}`}>{STATE_LABEL[releaseState(lab.status)]}</span>}
+            </div>
+            {investigations.isError ? (
+              <p className="pd2-muted">Your lab request could not be loaded. Reload the page to try again.</p>
+            ) : investigations.isLoading ? (
+              <p className="pd2-muted">Loading…</p>
+            ) : !lab ? (
+              <p className="pd2-muted">No lab tests requested. Tests your doctor asks for will be listed here.</p>
+            ) : releaseState(lab.status) === 'checking' ? (
+              <p className="pd2-muted">Your lab request is with the laboratory for checking. The tests will be listed here once it is released.</p>
+            ) : (
+              <>
+                <ul className="pd2-tests">
+                  {lab.panels.slice(0, LIST_LIMIT).map((p, n) => (
+                    <li key={n}>{p.panelName}</li>
+                  ))}
+                </ul>
+                <p className="pd2-foot">
+                  {lab.panels.length > LIST_LIMIT ? `${lab.panels.length - LIST_LIMIT} more on the full request. ` : ''}
+                  {releaseState(lab.status) === 'expired'
+                    ? `Expired${lab.expiryDate ? ` on ${shortDate(lab.expiryDate)}` : ''}.`
+                    : `Take the request to the laboratory${lab.expiryDate ? ` by ${shortDate(lab.expiryDate)}` : ''}.`}
+                </p>
+              </>
+            )}
           </div>
-          )}
-        </section>
+        </div>
+      </section>
 
-        {/* Laboratory */}
-        <section className="pd-tile" aria-labelledby="pd-lab-title">
-          <header>
-            <span className="pd-icon soft" aria-hidden>
-              <i className="bi bi-droplet-half" />
-            </span>
-            <span className="pd-label" id="pd-lab-title">
-              My lab tests
-            </span>
-            {lab && <span className={`pd-chip ${releaseState(lab.status)}`}>{STATE_LABEL[releaseState(lab.status)]}</span>}
-          </header>
-          {investigations.isError ? (
-            <p className="pd-muted">Could not load your lab tests. Reload to try again.</p>
-          ) : investigations.isLoading ? (
-            <p className="pd-muted">Loading…</p>
-          ) : !lab ? (
-            <>
-              <p className="pd-big-text">No lab tests yet</p>
-              <p className="pd-muted">Tests your doctor asks for will show here.</p>
-            </>
-          ) : releaseState(lab.status) === 'checking' ? (
-            <>
-              <p className="pd-big-text">Your lab request is being checked</p>
-              <p className="pd-muted">The laboratory is checking it. You will see the tests here once it is ready.</p>
-            </>
-          ) : (
-            <>
-              <ul className="pd-list">
-                {lab.panels.slice(0, LIST_LIMIT).map((p, n) => (
-                  <li key={n}>
-                    <b>{p.panelName}</b>
-                  </li>
-                ))}
-              </ul>
-              {lab.panels.length > LIST_LIMIT && (
-                <p className="pd-muted">and {lab.panels.length - LIST_LIMIT} more</p>
-              )}
-              <p className="pd-muted">
-                {releaseState(lab.status) === 'expired'
-                  ? `Expired${lab.expiryDate ? ` on ${shortDate(lab.expiryDate)}` : ''}`
-                  : `Take the request to the laboratory${lab.expiryDate ? ` by ${shortDate(lab.expiryDate)}` : ''}`}
-              </p>
-            </>
-          )}
-          {lab && (
-          <div className="pd-tile-foot">
-            <Link className="button secondary" to="/portal/documents">
-              See lab request
-            </Link>
-          </div>
-          )}
-        </section>
-      </div>
-
-      {/* ---------- 3. What do you want to do? ---------- */}
-      <h2 className="pd-section">What would you like to do?</h2>
-      <nav className="pd-actions" aria-label="Quick actions">
-        <Link to="/portal/booking" className="pd-action">
-          <i className="bi bi-calendar-plus" aria-hidden />
-          <span>
-            <b>Book a consultation</b>
-            <small>See your doctor by video</small>
-          </span>
-        </Link>
-        <Link to="/portal/appointments" className="pd-action">
-          <i className="bi bi-calendar-check" aria-hidden />
-          <span>
-            <b>My appointments</b>
-            <small>Times, changes and past visits</small>
-          </span>
-        </Link>
-        <Link to="/portal/documents" className="pd-action">
-          <i className="bi bi-file-earmark-medical" aria-hidden />
-          <span>
-            <b>My documents</b>
-            <small>
-              {newDocuments > 0
-                ? `Prescriptions and lab requests · ${newDocuments} ready`
-                : 'Prescriptions and lab requests'}
-            </small>
-          </span>
-        </Link>
-        <Link to="/portal/profile" className="pd-action">
-          <i className="bi bi-person-circle" aria-hidden />
-          <span>
-            <b>My profile</b>
-            <small>Phone, email and password</small>
-          </span>
-        </Link>
-        <Link to="/help" className="pd-action">
-          <i className="bi bi-question-circle" aria-hidden />
-          <span>
-            <b>Get help</b>
-            <small>Talk to the FNPH helpdesk</small>
-          </span>
-        </Link>
+      {/* ---------- Shortcuts ---------- */}
+      <nav className="pd2-shortcuts" aria-label="Shortcuts">
+        <Link to="/portal/booking"><i className="bi bi-calendar-plus" aria-hidden /> Book consultation</Link>
+        <Link to="/portal/appointments"><i className="bi bi-calendar-check" aria-hidden /> My appointments</Link>
+        <Link to="/portal/documents"><i className="bi bi-file-earmark-medical" aria-hidden /> My documents</Link>
+        <Link to="/portal/profile"><i className="bi bi-person" aria-hidden /> My profile</Link>
+        <Link to="/help"><i className="bi bi-question-circle" aria-hidden /> Get help</Link>
       </nav>
 
-      <div className="consent-receipt">
-        <b>First-time agreement recorded</b>
-        <span>
-          {consent.data.version} · {formatDateTime(consent.data.acceptedAt)} WAT
-        </span>
+      <p className="pd2-receipt">
+        First-time agreement recorded: {consent.data.version}, {formatDateTime(consent.data.acceptedAt)} WAT.{' '}
         <Link to="/portal/consent">View receipt</Link>
-      </div>
+      </p>
     </div>
   )
 }

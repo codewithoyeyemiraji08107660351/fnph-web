@@ -137,3 +137,146 @@ export function greeting(now: number): string {
   if (hour < 17) return 'Good afternoon'
   return 'Good evening'
 }
+
+/** Clinic opening time used when the doctor set a follow-up date but no time. */
+const DEFAULT_REVIEW_TIME = '09:00'
+
+/**
+ * The moment a follow-up falls due, in epoch ms. The hospital works in WAT
+ * (UTC+1, no daylight saving), so the date and time are read as WAT.
+ */
+export function followUpTarget(due: FollowUpDue): number | null {
+  if (!due.date) return null
+  const t = due.followUp.preferredTime && /^\d{2}:\d{2}/.test(due.followUp.preferredTime)
+    ? due.followUp.preferredTime.slice(0, 5)
+    : DEFAULT_REVIEW_TIME
+  const ms = Date.parse(`${due.date}T${t}:00+01:00`)
+  return Number.isNaN(ms) ? null : ms
+}
+
+/** Days, hours, minutes and seconds left. All zero once the moment has passed. */
+export function countdownParts(ms: number): { days: number; hours: number; minutes: number; seconds: number } {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  return {
+    days: Math.floor(s / 86400),
+    hours: Math.floor((s % 86400) / 3600),
+    minutes: Math.floor((s % 3600) / 60),
+    seconds: s % 60,
+  }
+}
+
+/** Weekday, day and month of an instant in WAT, for the calendar leaf. */
+export function watParts(ms: number): { weekday: string; day: string; month: string; time: string } {
+  const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { timeZone: DISPLAY_TIME_ZONE, ...o }).format(new Date(ms))
+  return {
+    weekday: f({ weekday: 'short' }),
+    day: f({ day: 'numeric' }),
+    month: f({ month: 'short' }),
+    time: f({ hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', ' ').toLowerCase(),
+  }
+}
+
+export type NoticeTone = 'danger' | 'warning' | 'info'
+
+export interface CareNotice {
+  id: string
+  tone: NoticeTone
+  title: string
+  body: string
+  action?: { to: string; label: string }
+}
+
+const SOON_DAYS = 7
+const BOOK = { to: '/portal/booking' }
+const DOCS = { to: '/portal/documents', label: 'Open documents' }
+
+/**
+ * What the patient should act on, most urgent first. Worded as a clinic letter
+ * would: what is happening, by when, and the one thing to do about it.
+ */
+export function careNotices(input: {
+  today: string
+  due: FollowUpDue | null
+  hasUpcomingAppointment: boolean
+  awaitingConfirmation: string | null
+  prescription: PrescriptionDetail | null
+  investigation: InvestigationDetail | null
+}): CareNotice[] {
+  const out: CareNotice[] = []
+  const { today, due, hasUpcomingAppointment } = input
+
+  if (due && due.date && due.days != null && !hasUpcomingAppointment) {
+    if (due.days < 0) {
+      const n = Math.abs(due.days)
+      out.push({
+        id: 'follow-up-overdue',
+        tone: 'danger',
+        title: 'Your follow-up review is overdue',
+        body: `Your doctor asked to review you ${due.estimated ? 'around' : 'on'} ${longDate(due.date)}, ${n} day${n === 1 ? '' : 's'} ago. Book a consultation so your treatment can be reviewed. Keep taking your medicines as prescribed until then.`,
+        action: { to: BOOK.to, label: 'Book follow-up' },
+      })
+    } else if (due.days <= SOON_DAYS && !due.scheduled) {
+      out.push({
+        id: 'follow-up-soon',
+        tone: 'warning',
+        title: due.days === 0 ? 'Your follow-up review is due today' : `Your follow-up review is due in ${due.days} day${due.days === 1 ? '' : 's'}`,
+        body: `No appointment is booked for it yet. Book a consultation for ${due.estimated ? 'around ' : ''}${longDate(due.date)} so the review is not missed.`,
+        action: { to: BOOK.to, label: 'Book follow-up' },
+      })
+    }
+  }
+
+  const rx = input.prescription
+  if (rx?.expiryDate && releaseState(rx.status) !== 'checking') {
+    const left = daysBetween(today, rx.expiryDate)
+    if (releaseState(rx.status) === 'expired' || left < 0) {
+      out.push({
+        id: 'rx-expired',
+        tone: 'warning',
+        title: 'Your prescription has expired',
+        body: `It ended on ${longDate(rx.expiryDate)} and can no longer be dispensed. Do not stop or change your medicines on your own. Book a consultation so your doctor can review and renew it.`,
+        action: { to: BOOK.to, label: 'Book a review' },
+      })
+    } else if (left <= SOON_DAYS) {
+      out.push({
+        id: 'rx-ending',
+        tone: 'warning',
+        title: left === 0 ? 'Your prescription ends today' : `Your prescription ends in ${left} day${left === 1 ? '' : 's'}`,
+        body: `It is valid until ${longDate(rx.expiryDate)}. Book a review before then so your treatment is not interrupted.`,
+        action: { to: BOOK.to, label: 'Book a review' },
+      })
+    }
+  }
+
+  const lab = input.investigation
+  if (lab?.expiryDate && releaseState(lab.status) === 'ready') {
+    const left = daysBetween(today, lab.expiryDate)
+    if (left >= 0 && left <= SOON_DAYS) {
+      out.push({
+        id: 'lab-ending',
+        tone: 'info',
+        title: 'Take your lab request to the laboratory',
+        body: `The request is valid until ${longDate(lab.expiryDate)}. After that date the laboratory cannot accept it.`,
+        action: DOCS,
+      })
+    }
+  }
+
+  if (input.awaitingConfirmation) {
+    out.push({
+      id: 'awaiting-confirmation',
+      tone: 'info',
+      title: 'Your appointment is waiting for confirmation',
+      body: `The hospital is reviewing your request for ${input.awaitingConfirmation}. You will be notified when it is confirmed or if the time has to change.`,
+      action: { to: '/portal/appointments', label: 'View appointment' },
+    })
+  }
+
+  const rank: Record<NoticeTone, number> = { danger: 0, warning: 1, info: 2 }
+  return out.sort((a, b) => rank[a.tone] - rank[b.tone])
+}
+
+/** Long weekday date of an instant in WAT: "Sunday 11 October 2026". */
+export function todayLine(now: number): string {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: DISPLAY_TIME_ZONE, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(now))
+}
