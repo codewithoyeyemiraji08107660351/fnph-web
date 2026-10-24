@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { financeApi, type WalletRow } from '@/lib/api/endpoints/finance'
 import { toApiError } from '@/lib/api/http'
 import { useAuth } from '@/lib/auth/AuthProvider'
@@ -51,18 +51,27 @@ function CreditDialog({ wallet, onClose, onDone }: { wallet: WalletRow; onClose:
   )
 }
 
+const LEDGER_PAGE = 50
+
 function LedgerDialog({ wallet, onClose }: { wallet: WalletRow; onClose: () => void }) {
-  const ledger = useQuery({ queryKey: ['ledger', wallet.centrePublicId], queryFn: () => financeApi.ledger(wallet.centrePublicId) })
+  // Paged, newest first. It used to stop at 50 entries with no way to see older ones.
+  const ledger = useInfiniteQuery({
+    queryKey: ['ledger', wallet.centrePublicId],
+    queryFn: ({ pageParam }) => financeApi.ledger(wallet.centrePublicId, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => (last.length === LEDGER_PAGE ? pages.length : undefined),
+  })
+  const rows = ledger.data?.pages.flat()
   return (
-    <Dialog open size="lg" onClose={onClose} title={`${wallet.centre} ledger`} description="Latest 50 entries.">
+    <Dialog open size="lg" onClose={onClose} title={`${wallet.centre} ledger`} description="Newest first.">
       {ledger.isLoading && <Spinner />}
       {ledger.isError && <ErrorState error={ledger.error} />}
-      {ledger.data?.length === 0 && <p className="text-sm text-muted">No entries.</p>}
+      {rows?.length === 0 && <p className="text-sm text-muted">No entries.</p>}
       <div className="overflow-x-auto">
         <table className="table-base min-w-[560px]">
           <thead><tr><th>When</th><th>Entry</th><th className="text-right">Amount</th><th className="text-right">Balance</th></tr></thead>
           <tbody>
-            {ledger.data?.map((l, i) => (
+            {rows?.map((l, i) => (
               <tr key={i}>
                 <td className="text-xs whitespace-nowrap">{formatDateTime(l.at)}</td>
                 <td className="text-sm">{humanise(l.direction)} <span className="text-muted">{l.reference}</span>{l.description && <span className="block text-xs text-muted">{l.description}</span>}</td>
@@ -73,6 +82,13 @@ function LedgerDialog({ wallet, onClose }: { wallet: WalletRow; onClose: () => v
           </tbody>
         </table>
       </div>
+      {ledger.hasNextPage && (
+        <div className="mt-3 text-center">
+          <button type="button" className="btn btn-secondary btn-sm" disabled={ledger.isFetchingNextPage} onClick={() => void ledger.fetchNextPage()}>
+            {ledger.isFetchingNextPage ? <Spinner label="Loading" /> : 'Show older entries'}
+          </button>
+        </div>
+      )}
     </Dialog>
   )
 }

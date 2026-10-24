@@ -6,7 +6,8 @@ import type { CentreReferral } from '@/lib/api/types'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { DISPLAY_TIME_ZONE, formatLongDate, formatTime } from '@/lib/format'
 import { Dialog } from '@/components/ui/Dialog'
-import { TextField } from '@/components/ui/Field'
+import { SelectField, TextAreaField, TextField } from '@/components/ui/Field'
+import { useNow } from '@/lib/hooks/useNow'
 import { Alert } from '@/components/ui/Alert'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -72,18 +73,19 @@ export function ConsentSubmitDialog({ referral, onClose, onDone }: { referral: C
   )
 }
 
-function watDay(offset: number) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: DISPLAY_TIME_ZONE }).format(new Date(Date.now() + offset * 86_400_000))
+function watDay(now: number, offset: number) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: DISPLAY_TIME_ZONE }).format(new Date(now + offset * 86_400_000))
 }
 
 /** A request, not a booking. FNPH decides, so there is no hold and no countdown. */
 export function RequestTimeDialog({ referral, onClose, onDone }: { referral: CentreReferral; onClose: () => void; onDone: (ref: string) => void }) {
-  const [date, setDate] = useState(watDay(1))
+  const now = useNow(60_000)
+  const [date, setDate] = useState(() => watDay(Date.now(), 1))
   const [chosen, setChosen] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const times = useQuery({ queryKey: ['centre-times', date], queryFn: () => centreApi.times(date) })
-  const days = Array.from({ length: 14 }, (_, i) => watDay(i + 1))
+  const days = Array.from({ length: 14 }, (_, i) => watDay(now, i + 1))
   const submit = async () => {
     if (!chosen) return
     setBusy(true)
@@ -134,6 +136,78 @@ export function RequestTimeDialog({ referral, onClose, onDone }: { referral: Cen
         ))}
       </div>
       <p className="mt-3 text-xs text-muted">Times are WAT.</p>
+    </Dialog>
+  )
+}
+
+const REASON_MIN = 20
+
+/**
+ * Corrects a draft, or adds what FNPH asked for on a returned referral.
+ * Resending used to send the same text back, so the hub returned it again.
+ */
+export function EditReferralDialog({ referral, onClose, onDone }: { referral: CentreReferral; onClose: () => void; onDone: () => void }) {
+  const [f, setF] = useState({
+    referralReason: referral.referralReason ?? '',
+    assessment: referral.assessment ?? '',
+    currentCondition: referral.currentCondition ?? '',
+    relevantMedicines: referral.relevantMedicines ?? '',
+    previousResults: referral.previousResults ?? '',
+    urgency: referral.urgency,
+  })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLSelectElement>) => setF((v) => ({ ...v, [k]: e.target.value }))
+  const short = f.referralReason.trim().length < REASON_MIN
+  const save = async () => {
+    if (short) return setError(`Describe the reason in at least ${REASON_MIN} characters.`)
+    setBusy(true)
+    setError(null)
+    try {
+      await centreApi.updateReferral(referral.publicId, {
+        referralReason: f.referralReason.trim(),
+        assessment: f.assessment.trim() || undefined,
+        currentCondition: f.currentCondition.trim() || undefined,
+        relevantMedicines: f.relevantMedicines.trim() || undefined,
+        previousResults: f.previousResults.trim() || undefined,
+        urgency: f.urgency,
+      })
+      onDone()
+    } catch (err) {
+      setError(toApiError(err).message)
+      setBusy(false)
+    }
+  }
+  return (
+    <Dialog
+      open
+      size="lg"
+      onClose={onClose}
+      busy={busy}
+      title={`Edit referral ${referral.reference}`}
+      description={referral.status === 'RETURNED' ? 'Add what FNPH asked for, then take consent and send it again.' : 'Still a draft. FNPH sees it once it is sent with consent.'}
+      footer={
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={save}>{busy ? <Spinner label="Saving" inverted /> : 'Save changes'}</button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {referral.returnedReason && <Alert tone="warning" title="FNPH asked">{referral.returnedReason}</Alert>}
+        {error && <Alert tone="danger">{error}</Alert>}
+        <TextAreaField label="Reason for referral" rows={4} maxLength={4000} value={f.referralReason} onChange={set('referralReason')} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextAreaField label="Assessment at the centre" rows={2} maxLength={4000} value={f.assessment} onChange={set('assessment')} />
+          <TextAreaField label="Current condition" rows={2} maxLength={4000} value={f.currentCondition} onChange={set('currentCondition')} />
+          <TextAreaField label="Medicines being taken" rows={2} maxLength={4000} value={f.relevantMedicines} onChange={set('relevantMedicines')} />
+          <TextAreaField label="Previous results" rows={2} maxLength={4000} value={f.previousResults} onChange={set('previousResults')} />
+        </div>
+        <SelectField label="Urgency" value={f.urgency} onChange={set('urgency')}>
+          <option value="ROUTINE">Routine</option>
+          <option value="SOON">Soon</option>
+        </SelectField>
+      </div>
     </Dialog>
   )
 }

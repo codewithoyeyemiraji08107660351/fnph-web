@@ -1,59 +1,76 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { legacyCentreJoinApi } from '@/lib/api/endpoints/records'
-import { consultationApiFor } from '@/lib/api/endpoints/clinical'
-import { ConsultFrame } from '@/features/consult/ConsultFrame'
-import { useJoinOnce } from '@/features/consult/useJoinOnce'
-import { usePublicSettings } from '@/lib/hooks/usePublicSettings'
-import { formatPhone, formatTime } from '@/lib/format'
-import { useDocumentTitle } from '@/lib/hooks/useDocumentTitle'
-import { Alert } from '@/components/ui/Alert'
+import { centreApi } from '@/lib/api/endpoints/centre'
+import { useAuth } from '@/lib/auth/AuthProvider'
+import { formatDateTime, formatLongDate, humanise } from '@/lib/format'
+import { useNow } from '@/lib/hooks/useNow'
+import { ErrorState, PageHeader, Panel, Stat } from '@/components/ui/Page'
+import { Badge } from '@/components/ui/Badge'
+import { AppointmentBadge } from '@/components/ui/AppointmentBadge'
 import { Spinner } from '@/components/ui/Spinner'
 
-const api = consultationApiFor('centre')
-
-/**
-  The third kind of room. Centre staff attend with the patient; the FNPH
-  clinician owns the call. No clock and no termination controls here,
-  because neither belongs to this user.
-*/
-export function CentreRoom() {
-  useDocumentTitle('Centre consultation')
-  const { appointmentId = '' } = useParams()
-  const { emergencyNumber } = usePublicSettings()
-  const { session, error, retry } = useJoinOnce(appointmentId, () => api.joinAsCentre(appointmentId))
-  // When the room is not open yet, show what the appointment is so staff can prepare.
-  const details = useQuery({ queryKey: ['centre-join-details', appointmentId], queryFn: () => legacyCentreJoinApi.details(appointmentId), enabled: error?.status === 409, retry: false })
-  if (error) {
-    return (
-      <div className="mx-auto max-w-xl">
-        <Alert tone={error.status === 409 ? 'warning' : 'danger'} title="The room is not open">{error.message}</Alert>
-        {details.data && (
-          <p className="mt-3 text-sm text-muted">
-            {details.data.reference}, {formatTime(details.data.appointmentDateTime)} WAT{details.data.room && details.data.room !== 'null' ? `, ${details.data.room}` : ''}. {details.data.note}
-          </p>
-        )}
-        <div className="mt-5 flex gap-2">
-          <button type="button" className="btn btn-primary" onClick={retry}>Try again</button>
-          <Link to="/centre/consultations" className="btn btn-secondary no-underline">Back to consultations</Link>
-        </div>
-      </div>
-    )
-  }
-  if (!session) return <Spinner label="Joining the room" />
+export function CentreHome() {
+  const { can } = useAuth()
+  const now = useNow(60_000)
+  const me = useQuery({ queryKey: ['centre-me'], queryFn: centreApi.me })
+  const appts = useQuery({ queryKey: ['centre-appointments'], queryFn: centreApi.appointments, enabled: can('centre_referral.read') })
+  if (me.isLoading) return <Spinner label="Loading your centre" />
+  if (me.isError || !me.data) return <ErrorState error={me.error} onRetry={() => me.refetch()} />
+  const c = me.data
+  const u = c.utilisation
+  const upcoming = (appts.data ?? []).filter((a) => a.status === 'APPROVED' || a.status === 'IN_PROGRESS' || a.status === 'AWAITING_APPROVAL').slice(0, 5)
   return (
-    <div className="space-y-4">
-      <div>
-        <Link to="/centre/consultations" className="text-sm font-bold no-underline"><i aria-hidden className="bi bi-arrow-left" /> Consultations</Link>
-        <h1 className="mt-1 text-2xl font-extrabold">Consultation {formatTime(session.scheduledStart)} to {formatTime(session.scheduledEnd)} WAT</h1>
-        <p className="text-sm text-muted">The FNPH doctor admits you, runs the session and ends it.</p>
+    <>
+      <PageHeader
+        kicker={formatLongDate(new Date(now))}
+        title={c.name}
+        description={`${c.code}${c.lga ? `, ${c.lga}` : ''}. Specialist consultations with FNPH Kaduna for patients registered at this centre.`}
+        actions={
+          can('centre_referral.create') && c.status === 'ACTIVE' && (
+            <Link to="/centre/patients" className="btn btn-primary no-underline">
+              <i aria-hidden className="bi bi-person-plus" /> Refer a patient
+            </Link>
+          )
+        }
+      />
+      {c.status !== 'ACTIVE' && <p className="mb-5 rounded-[14px] bg-amber-note px-4 py-3 text-sm text-gold-700">This centre is {humanise(c.status).toLowerCase()}. New referrals and consultation requests are paused until FNPH activates it. Care bundles already delivered can still be acted on.</p>}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Referrals awaiting a time" value={u.referralsAwaitingScheduling} />
+        <Stat label="Consultations scheduled" value={u.referralsScheduled} />
+        <Stat label="Consultations completed" value={u.consultationsCompleted} />
+        <Stat label="Care bundles to act on" value={u.bundlesAwaitingAction} tone={u.bundlesAwaitingAction ? 'warn' : 'default'} />
       </div>
-      <ConsultFrame roomUrl={session.roomUrl} token={session.token} title="Centre consultation video" />
-      <div className="grid gap-3 text-sm sm:grid-cols-3">
-        <p className="rounded-[14px] bg-white p-4"><strong className="block">Patient present</strong><span className="text-muted">Seat the patient where the doctor can see and hear them, away from others.</span></p>
-        <p className="rounded-[14px] bg-white p-4"><strong className="block">Identity</strong><span className="text-muted">The doctor confirms who the patient is before starting. Have their details to hand.</span></p>
-        <p className="rounded-[14px] bg-blush p-4 text-alarm-700"><strong className="block">Emergency</strong>Follow your centre’s emergency procedure. FNPH clinical line: <a className="font-bold text-alarm-700" href={`tel:${emergencyNumber}`}>{formatPhone(emergencyNumber)}</a></p>
+      <p className="mt-2 text-xs text-muted">This centre’s figures only. No amounts are shown here; funding is managed by FNPH Finance.</p>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <Panel title="Coming up" action={<Link to="/centre/consultations" className="text-sm font-bold">All consultations</Link>} bodyClassName="">
+          {appts.isLoading && <div className="p-5"><Spinner /></div>}
+          {appts.isError && <ErrorState error={appts.error} onRetry={() => appts.refetch()} />}
+          {appts.data && upcoming.length === 0 && <p className="px-5 py-4 text-sm text-muted">Nothing scheduled.</p>}
+          <ul className="divide-y divide-line">
+            {upcoming.map((a) => (
+              <li key={a.publicId} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
+                <span>
+                  <span className="block font-bold">{a.patientName}</span>
+                  <span className="block text-xs text-muted">{formatDateTime(a.appointmentDate)} WAT. {a.reference}</span>
+                </span>
+                <AppointmentBadge status={a.status} />
+              </li>
+            ))}
+          </ul>
+        </Panel>
+        <Panel title="Services at this centre">
+          <ul className="space-y-2 text-sm">
+            {c.capabilities.map((cap) => (
+              <li key={cap.capability} className="flex items-center justify-between">
+                <span>{humanise(cap.capability)}</span>
+                {cap.enabled ? <Badge tone="green">Running</Badge> : <Badge>Not run here</Badge>}
+              </li>
+            ))}
+            {c.capabilities.length === 0 && <li className="text-muted">No optional services are set up.</li>}
+          </ul>
+        </Panel>
       </div>
-    </div>
+    </>
   )
 }

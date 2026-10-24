@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { LIVE } from './oversight'
 import { ReassignDialog } from './ReassignDialog'
+import { CentreReviewerDialog } from './CentreReviewerDialog'
 
 const FILTERS: Array<{ value: ReleaseDeskRow['status'] | ''; label: string }> = [
   { value: '', label: 'All unreleased' },
@@ -42,6 +43,13 @@ interface Reassigning {
   role: ReassignableRole
 }
 
+interface CentreAssigning {
+  bundlePublicId: string
+  type: DeskReview['reviewType']
+  centreName?: string | null
+  currentName?: string | null
+}
+
 /** Who each waiting review is with, how long it has waited, and a way to move it. */
 function OpenReviews({
   reviews,
@@ -50,7 +58,7 @@ function OpenReviews({
 }: {
   reviews: DeskReview[]
   canReassign: boolean
-  onReassign: (role: ReassignableRole) => void
+  onReassign: (review: DeskReview) => void
 }) {
   if (reviews.length === 0) return null
   return (
@@ -70,7 +78,7 @@ function OpenReviews({
               <button
                 type="button"
                 className="font-semibold text-accent-strong underline-offset-2 hover:underline"
-                onClick={() => onReassign(REVIEW_ROLE[r.reviewType])}
+                onClick={() => onReassign(r)}
               >
                 {r.state === 'UNASSIGNED' ? 'Assign' : 'Reassign'}
               </button>
@@ -86,6 +94,7 @@ export function ReleaseDesk() {
   const { can } = useAuth()
   const [status, setStatus] = useState<ReleaseDeskRow['status'] | ''>('')
   const [reassigning, setReassigning] = useState<Reassigning | null>(null)
+  const [centreAssigning, setCentreAssigning] = useState<CentreAssigning | null>(null)
   const desk = useQuery({
     queryKey: ['release-desk', status],
     queryFn: () => releaseApi.desk(status || undefined),
@@ -104,7 +113,7 @@ export function ReleaseDesk() {
       <PageHeader
         kicker="Hub coordination"
         title="Release desk"
-        description="Completed consultations waiting to reach the patient. Oldest first, because the wait is theirs. Release sends every document at once."
+        description="Completed consultations waiting to reach the patient or their centre. Oldest first, because the wait is theirs. Release sends every document at once."
         actions={
           <div className="flex items-center gap-3 text-sm text-muted">
             <span aria-live="polite">
@@ -148,7 +157,17 @@ export function ReleaseDesk() {
                     <tr key={r.publicId} className="align-top hover:bg-soft/60">
                       <td>
                         <p className="font-bold">{r.patientName}</p>
-                        <p className="text-xs text-muted">EHR {r.ehrNumber}</p>
+                        {r.pathway === 'CENTRE' ? (
+                          <>
+                            <p className="text-xs text-muted">Centre ID {r.ehrNumber}</p>
+                            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+                              <Badge tone="navy">Centre</Badge>
+                              <span className="text-muted">{r.centreName}</span>
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-muted">EHR {r.ehrNumber}</p>
+                        )}
                       </td>
                       <td className="text-sm">
                         {formatDateTime(r.appointmentDate)}
@@ -164,7 +183,16 @@ export function ReleaseDesk() {
                         <OpenReviews
                           reviews={r.openReviews ?? []}
                           canReassign={canReassign}
-                          onReassign={(role) => setReassigning({ appointmentPublicId: r.appointmentPublicId, role })}
+                          onReassign={(review) =>
+                            r.pathway === 'CENTRE'
+                              ? setCentreAssigning({
+                                  bundlePublicId: r.publicId,
+                                  type: review.reviewType,
+                                  centreName: r.centreName,
+                                  currentName: review.reviewerName,
+                                })
+                              : setReassigning({ appointmentPublicId: r.appointmentPublicId, role: REVIEW_ROLE[review.reviewType] })
+                          }
                         />
                       </td>
                       <td className="text-right">
@@ -180,6 +208,16 @@ export function ReleaseDesk() {
           </>
         )}
       </Panel>
+
+      {centreAssigning && (
+        <CentreReviewerDialog
+          bundlePublicId={centreAssigning.bundlePublicId}
+          type={centreAssigning.type}
+          centreName={centreAssigning.centreName}
+          currentName={centreAssigning.currentName}
+          onClose={() => setCentreAssigning(null)}
+        />
+      )}
 
       {reassigning && (
         <ReassignDialog

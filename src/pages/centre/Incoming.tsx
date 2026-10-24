@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { centreApi } from '@/lib/api/endpoints/centre'
-import type { CentreBundleRow } from '@/lib/api/types'
+import type { CentreBundleRow, CentreCapability } from '@/lib/api/types'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { formatDateTime } from '@/lib/format'
 import { EmptyState, ErrorState, PageHeader, Panel } from '@/components/ui/Page'
@@ -10,13 +11,17 @@ import { ReasonDialog } from '@/components/ui/ReasonDialog'
 import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/Toast'
 
-export function Incoming({ title = 'Care bundles', description }: { title?: string; description?: string }) {
+export function Incoming({ title = 'Care bundles', description, capability = 'COORDINATION' }: { title?: string; description?: string; capability?: CentreCapability }) {
   const { can } = useAuth()
+  const { pathname } = useLocation()
   const qc = useQueryClient()
   const toast = useToast()
   const [tab, setTab] = useState<'incoming' | 'treated'>('incoming')
   const [treating, setTreating] = useState<CentreBundleRow | null>(null)
-  const list = useQuery({ queryKey: ['centre-bundles', tab], queryFn: tab === 'incoming' ? centreApi.incoming : centreApi.treated })
+  const list = useQuery({
+    queryKey: ['centre-bundles', capability, tab],
+    queryFn: () => (tab === 'incoming' ? centreApi.incoming(capability) : centreApi.treated(capability)),
+  })
   return (
     <>
       <PageHeader
@@ -35,18 +40,30 @@ export function Incoming({ title = 'Care bundles', description }: { title?: stri
         <ul className="divide-y divide-line">
           {list.data?.map((b) => (
             <li key={b.publicId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-              <div>
+              <div className="min-w-0">
                 <p className="font-bold">{b.patientName} <span className="font-normal text-muted">{b.centrePatientId}</span></p>
                 <p className="text-xs text-muted">Consultation {b.appointmentReference}. Released {formatDateTime(b.deliveredAt)}.</p>
+                {tab === 'treated' && b.treatedAt && (
+                  <p className="mt-1 text-xs text-muted">
+                    Treated {formatDateTime(b.treatedAt)}{b.treatedBy ? ` by ${b.treatedBy}` : ''}. {b.treatmentNotes}
+                  </p>
+                )}
               </div>
-              {tab === 'incoming' ? (
-                <div className="flex items-center gap-2">
-                  {b.outstanding && <Badge tone="gold">Outstanding</Badge>}
-                  {can('centre_bundle.mark_treated') && <button type="button" className="btn btn-primary btn-sm" onClick={() => setTreating(b)}>Mark treated</button>}
-                </div>
-              ) : (
-                <Badge tone="green">Treated</Badge>
-              )}
+              <div className="flex items-center gap-2">
+                {tab === 'incoming' && !b.firstOpenedAt && <Badge tone="navy">Not opened</Badge>}
+                {tab === 'incoming' && b.outstanding && <Badge tone="gold">Outstanding</Badge>}
+                {tab === 'treated' && <Badge tone="green">Treated</Badge>}
+                <Link
+                  to={`/centre/incoming/${encodeURIComponent(b.publicId)}`}
+                  state={{ from: pathname, capability }}
+                  className={`btn btn-sm no-underline ${tab === 'incoming' ? 'btn-primary' : 'btn-secondary'}`}
+                >
+                  {tab === 'incoming' ? 'Open' : 'View'}
+                </Link>
+                {tab === 'incoming' && can('centre_bundle.mark_treated') && (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTreating(b)}>Mark treated</button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -61,10 +78,13 @@ export function Incoming({ title = 'Care bundles', description }: { title?: stri
           min={5}
           onClose={() => setTreating(null)}
           onConfirm={async (notes) => {
-            await centreApi.markTreated(treating.publicId, notes)
+            await centreApi.markTreated(treating.publicId, notes, capability)
             toast('Marked treated.')
             setTreating(null)
-            await qc.invalidateQueries({ queryKey: ['centre-bundles'] })
+            await Promise.all([
+              qc.invalidateQueries({ queryKey: ['centre-bundles'] }),
+              qc.invalidateQueries({ queryKey: ['centre-me'] }),
+            ])
           }}
         />
       )}

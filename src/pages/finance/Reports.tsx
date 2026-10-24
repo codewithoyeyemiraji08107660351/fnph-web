@@ -6,6 +6,7 @@ import { PageHeader, Panel } from '@/components/ui/Page'
 import { SelectField, TextField } from '@/components/ui/Field'
 import { Alert } from '@/components/ui/Alert'
 import { Spinner } from '@/components/ui/Spinner'
+import { ExcelExport } from './ExcelExport'
 
 const KINDS: Array<{ value: ReportKind; label: string; dates: 'range' | 'year' | 'none' }> = [
   { value: 'daily', label: 'Daily collections', dates: 'range' },
@@ -36,8 +37,9 @@ export function Reports() {
   const columns = report?.rows.length ? Object.keys(report.rows[0]) : []
   return (
     <>
-      <PageHeader kicker="Finance" title="Reports" />
-      <Panel>
+      <PageHeader kicker="Finance" title="Reports" description="Download a period as an Excel workbook, or run a single report on screen." />
+      <ExcelExport />
+      <Panel title="On-screen report" className="mt-5">
         <div className="grid gap-3 sm:grid-cols-4 sm:items-end">
           <SelectField label="Report" value={kind} onChange={(e) => { setKind(e.target.value as ReportKind); setReport(null) }}>
             {KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}

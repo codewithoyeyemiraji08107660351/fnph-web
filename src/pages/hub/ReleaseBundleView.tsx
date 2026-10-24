@@ -26,6 +26,7 @@ import { FollowUpsPanel } from './FollowUpsPanel'
 import { LIVE } from './oversight'
 import { ReviewsPanel } from './ReviewsPanel'
 import { TeamPanel } from './TeamPanel'
+import { CentreReviewerDialog, type CentreReviewType } from './CentreReviewerDialog'
 
 function formatOptionalDate(value?: string | null) {
   if (!value) return '—'
@@ -568,9 +569,13 @@ function FollowUpsSection({
   )
 }
 
-function ClinicalContents({
+export function ClinicalContents({
   bundle,
+  heading = 'Clinical contents',
+  intro = 'Read-only clinical information produced during this consultation. The Hub Coordinator can inspect it but cannot change it here.',
 }: {
+  heading?: string
+  intro?: string
   bundle: {
     clinicalNote?: {
       clinicalNote?: string | null
@@ -647,20 +652,17 @@ function ClinicalContents({
     <div className="mt-5 space-y-5">
       <div>
         <h2 className="text-xl font-black">
-          Clinical contents
+          {heading}
         </h2>
 
         <p className="mt-1 text-sm text-muted">
-          Read-only clinical information produced during this consultation.
-          The Hub Coordinator can inspect it but cannot change it here.
+          {intro}
         </p>
       </div>
 
       {!hasClinicalData && (
         <Alert tone="warning">
-          No clinical content was returned for this bundle.
-          Check the bundle components and backend response if documents were
-          expected.
+          No clinical content is available for this bundle.
         </Alert>
       )}
 
@@ -700,6 +702,7 @@ export function ReleaseBundleView() {
   const [blocking, setBlocking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [assigning, setAssigning] = useState<{ type: CentreReviewType; currentName?: string | null } | null>(null)
 
   if (bundle.isLoading) {
     return <Spinner label="Loading bundle" />
@@ -721,6 +724,8 @@ export function ReleaseBundleView() {
   )
 
   const released = b.status === 'RELEASED'
+  const centre = b.pathway === 'CENTRE'
+  const recipient = centre ? `${b.centreName ?? 'the centre'}` : 'the patient'
 
   const update = (next: typeof b) => {
     qc.setQueryData(['bundle', bundleId], next)
@@ -741,7 +746,7 @@ export function ReleaseBundleView() {
         ),
       )
 
-      toast('Released. The patient has been notified.')
+      toast(centre ? `Released. ${recipient} has the care bundle.` : 'Released. The patient has been notified.')
       setConfirming(false)
     } catch (err) {
       setError(toApiError(err).message)
@@ -772,6 +777,14 @@ export function ReleaseBundleView() {
           <BundleStatusBadge status={b.status} />
         }
       />
+
+      {centre && (
+        <Alert tone="info" className="mb-5" title="Centre consultation">
+          {b.centreAppointmentReference} at {recipient}. Release delivers the documents to the
+          centre&apos;s care bundles, where its staff act on them. The patient has no portal account on
+          this pathway.
+        </Alert>
+      )}
 
       {error && (
         <Alert
@@ -934,7 +947,54 @@ export function ReleaseBundleView() {
         </>
       )}
 
+      {centre && (
+        <Panel title="Pharmacy and laboratory reviews" className="mt-5" bodyClassName="">
+          {(b.openReviews ?? []).length === 0 ? (
+            <p className="px-5 py-4 text-sm text-muted">Nothing waiting on a reviewer.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {b.openReviews.map((r) => (
+                <li key={r.reviewPublicId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                  <div className="text-sm">
+                    <p className="font-bold">
+                      {r.reviewType === 'PHARMACY' ? 'Pharmacy' : 'Laboratory'} review
+                      {r.documentNumber ? <span className="font-normal text-muted"> {r.documentNumber}</span> : null}
+                    </p>
+                    <p className="text-muted">
+                      {r.state === 'QUERY_RAISED'
+                        ? `Query raised by ${r.reviewerName ?? 'the reviewer'}`
+                        : r.reviewerName
+                          ? `With ${r.reviewerName}${r.openedAt ? ', opened' : ', not opened yet'}`
+                          : 'Nobody assigned. It is in no queue.'}
+                    </p>
+                  </div>
+                  {!released && can('appointment.assign_team') && r.state !== 'QUERY_RAISED' && (
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${r.reviewerName ? 'btn-secondary' : 'btn-primary'}`}
+                      onClick={() => setAssigning({ type: r.reviewType, currentName: r.reviewerName })}
+                    >
+                      {r.reviewerName ? 'Reassign' : 'Assign'}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      )}
+
       <ClinicalContents bundle={b.clinicalContent} />
+
+      {assigning && (
+        <CentreReviewerDialog
+          bundlePublicId={b.publicId}
+          type={assigning.type}
+          centreName={b.centreName}
+          currentName={assigning.currentName}
+          onClose={() => setAssigning(null)}
+        />
+      )}
 
       {confirming && (
         <Dialog
@@ -943,7 +1003,7 @@ export function ReleaseBundleView() {
             setConfirming(false)
           }
           busy={busy}
-          title="Release to the patient?"
+          title={centre ? `Release to ${recipient}?` : 'Release to the patient?'}
           footer={
             <>
               <button
@@ -989,8 +1049,8 @@ export function ReleaseBundleView() {
 
           <p className="text-sm">
             Every document in this bundle becomes
-            available to the patient at once, and they
-            are notified. A released bundle cannot be
+            available to {recipient} at once, and{' '}
+            {centre ? 'its staff are' : 'they are'} notified. A released bundle cannot be
             withdrawn; a correction needs a superseding
             document from the doctor.
           </p>

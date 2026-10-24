@@ -1,4 +1,4 @@
-import { api, seg } from '../http'
+import { api, http, seg } from '../http'
 
 export interface WalletRow {
   centre: string
@@ -80,5 +80,20 @@ export const financeApi = {
   report: (kind: ReportKind, p: { from?: string; to?: string; year?: number }) => {
     const params = kind === 'monthly' ? { year: p.year } : kind === 'reconciliation' || kind === 'exceptions' ? {} : { from: p.from, to: p.to }
     return api.get<FinanceReport>(`/finance/reports/${kind}`, { params })
+  },
+  /**
+   * The Excel workbook for a period. Dates are WAT days, YYYY-MM-DD, both
+   * inclusive. The server may cover less than asked (an end date after today
+   * becomes today), so its filename is preferred over one built here.
+   */
+  exportXlsx: async (from: string, to: string) => {
+    const response = await http.get<Blob>('/finance/reports/export', {
+      params: { from, to },
+      responseType: 'blob',
+      timeout: 120_000,
+    })
+    const disposition = String(response.headers['content-disposition'] ?? '')
+    const filename = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? `FNPH-finance-report_${from}_to_${to}.xlsx`
+    return { blob: response.data, filename }
   },
 }

@@ -25,5 +25,5 @@ export function CapabilityWorkspace({ capability }: { capability: keyof typeof C
       </div>
     )
   }
-  return <Incoming title={COPY[capability].title} description={COPY[capability].description} />
+  return <Incoming title={COPY[capability].title} description={COPY[capability].description} capability={capability} />
 }

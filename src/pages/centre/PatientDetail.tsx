@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { centreApi } from '@/lib/api/endpoints/centre'
 import { toApiError } from '@/lib/api/http'
 import type { CentrePatientRow, CentreReferral } from '@/lib/api/types'
@@ -12,7 +12,9 @@ import { Alert } from '@/components/ui/Alert'
 import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/Toast'
 import { ReferralStatusBadge } from './ReferralStatusBadge'
-import { ConsentSubmitDialog, RequestTimeDialog } from './ReferralDialogs'
+import { ConsentSubmitDialog, EditReferralDialog, RequestTimeDialog } from './ReferralDialogs'
+import { useCentreRefresh } from '@/features/centre/useCentreRefresh'
+import { useCentreActive } from '@/features/centre/useCentreActive'
 
 const REASON_MIN = 20
 
@@ -75,29 +77,44 @@ function NewReferral({ patientId, onCreated }: { patientId: string; onCreated: (
 export function PatientDetail() {
   const { patientId = '' } = useParams()
   const state = useLocation().state as { patient?: CentrePatientRow } | null
-  const qc = useQueryClient()
   const toast = useToast()
   const { can } = useAuth()
+  const { active } = useCentreActive()
+  const refreshAll = useCentreRefresh()
+  const refresh = () => void refreshAll()
+  // Records staff can open a patient but do not read referrals. The query ran
+  // anyway and the page showed a permission error where the history would be.
+  const canReadReferrals = can('centre_referral.read')
   const all = useQuery({ queryKey: ['centre-patients', ''], queryFn: () => centreApi.patients(), enabled: !state?.patient })
   const patient = state?.patient ?? all.data?.find((p) => p.publicId === patientId)
-  const referrals = useQuery({ queryKey: ['centre-patient-referrals', patientId], queryFn: () => centreApi.patientReferrals(patientId) })
+  const referrals = useQuery({
+    queryKey: ['centre-patient-referrals', patientId],
+    queryFn: () => centreApi.patientReferrals(patientId),
+    enabled: canReadReferrals,
+  })
   const [consenting, setConsenting] = useState<CentreReferral | null>(null)
   const [requesting, setRequesting] = useState<CentreReferral | null>(null)
-  const refresh = () => {
-    void qc.invalidateQueries({ queryKey: ['centre-patient-referrals', patientId] })
-    void qc.invalidateQueries({ queryKey: ['centre-referrals'] })
-  }
+  const [editing, setEditing] = useState<CentreReferral | null>(null)
   if (!patient && all.isLoading) return <Spinner />
+  if (!patient && all.isError) return <ErrorState error={all.error} onRetry={() => all.refetch()} />
+  if (!patient) {
+    return (
+      <>
+        <Link to="/centre/patients" className="mb-4 inline-flex items-center gap-1.5 text-sm font-bold no-underline"><i aria-hidden className="bi bi-arrow-left" /> Patients</Link>
+        <Alert tone="warning" title="Patient not found">This patient is not registered at your centre, or the record is no longer active.</Alert>
+      </>
+    )
+  }
   return (
     <>
       <Link to="/centre/patients" className="mb-4 inline-flex items-center gap-1.5 text-sm font-bold no-underline"><i aria-hidden className="bi bi-arrow-left" /> Patients</Link>
       <PageHeader
         kicker="Centre patient"
-        title={patient?.name ?? 'Patient'}
-        description={patient ? `Born ${formatCalendarDate(patient.dateOfBirth)}. ${formatPhone(patient.phoneNumber)}.` : undefined}
+        title={patient.name}
+        description={`${patient.centrePatientId ? `${patient.centrePatientId}. ` : ''}Born ${formatCalendarDate(patient.dateOfBirth)}. ${formatPhone(patient.phoneNumber)}.`}
       />
       <div className="grid gap-5 xl:grid-cols-[1fr_1.2fr]">
-        <Panel title="Referrals" bodyClassName="">
+        {canReadReferrals && <Panel title="Referrals" bodyClassName="">
           {referrals.isLoading && <div className="p-5"><Spinner /></div>}
           {referrals.isError && <ErrorState error={referrals.error} onRetry={() => referrals.refetch()} />}
           {referrals.data?.length === 0 && <p className="px-5 py-4 text-sm text-muted">No referrals yet.</p>}
@@ -111,25 +128,35 @@ export function PatientDetail() {
                 <p className="text-xs text-muted">
                   Created {formatDateTime(r.createdAt)}.{r.consentWitnessedBy ? ` Consent witnessed by ${r.consentWitnessedBy}, ${formatDateTime(r.consentAcceptedAt)}.` : ''}
                 </p>
+                {r.status === 'RETURNED' && r.returnedReason && (
+                  <p className="mt-1 text-sm text-gold-700"><span className="font-bold">FNPH asked:</span> {r.returnedReason}</p>
+                )}
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {(r.status === 'DRAFT' || r.status === 'RETURNED') && can('centre_referral.create') && (
-                    <button type="button" className="btn btn-primary btn-sm" onClick={() => setConsenting(r)}>Take consent and send</button>
+                  {active && (r.status === 'DRAFT' || r.status === 'RETURNED') && can('centre_referral.create') && (
+                    <>
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(r)}>Edit</button>
+                      <button type="button" className="btn btn-primary btn-sm" onClick={() => setConsenting(r)}>Take consent and send</button>
+                    </>
                   )}
-                  {r.status === 'SUBMITTED' && can('appointment.request') && (
+                  {active && r.status === 'SUBMITTED' && can('appointment.request') && (
                     <button type="button" className="btn btn-primary btn-sm" onClick={() => setRequesting(r)}>Request a consultation time</button>
                   )}
                 </div>
               </li>
             ))}
           </ul>
-        </Panel>
-        {can('centre_referral.create') && (
+        </Panel>}
+        {!active && can('centre_referral.create') && (
+          <Alert tone="warning" title="Referrals are paused">This centre is not active. FNPH has to activate it before new referrals can be sent or booked.</Alert>
+        )}
+        {active && can('centre_referral.create') && (
           <Panel title="New referral">
             <NewReferral patientId={patientId} onCreated={(r) => { toast(`Referral ${r.reference} saved as a draft.`); refresh() }} />
           </Panel>
         )}
       </div>
       {consenting && <ConsentSubmitDialog referral={consenting} onClose={() => setConsenting(null)} onDone={() => { setConsenting(null); toast('Referral sent to FNPH.'); refresh() }} />}
+      {editing && <EditReferralDialog referral={editing} onClose={() => setEditing(null)} onDone={() => { setEditing(null); toast('Referral updated.'); refresh() }} />}
       {requesting && <RequestTimeDialog referral={requesting} onClose={() => setRequesting(null)} onDone={(ref) => { setRequesting(null); toast(`Request ${ref} sent. FNPH will confirm.`); refresh() }} />}
     </>
   )

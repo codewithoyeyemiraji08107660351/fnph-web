@@ -26,6 +26,7 @@ export const CentrePatientDetail = lazy(() => import('@/pages/centre/PatientDeta
 export const CentreReferrals = lazy(() => import('@/pages/centre/Referrals').then((m) => ({ default: m.Referrals })))
 export const CentreConsultations = lazy(() => import('@/pages/centre/Consultations').then((m) => ({ default: m.Consultations })))
 export const CentreIncoming = lazy(() => import('@/pages/centre/Incoming').then((m) => ({ default: m.Incoming })))
+export const CentreBundleDetail = lazy(() => import('@/pages/centre/BundleDetail').then((m) => ({ default: m.BundleDetail })))
 export const CentreRoom = lazy(() => import('@/pages/centre/CentreRoom').then((m) => ({ default: m.CentreRoom })))
 export const CapabilityWorkspace = lazy(() => import('@/pages/centre/CapabilityWorkspace').then((m) => ({ default: m.CapabilityWorkspace })))
 export const CentreApprovals = lazy(() => import('@/pages/hub/CentreApprovals').then((m) => ({ default: m.CentreApprovals })))
