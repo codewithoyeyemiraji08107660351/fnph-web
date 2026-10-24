@@ -58,9 +58,30 @@ function SlotsDialog({ pub, onClose }: { pub: Publication; onClose: () => void }
   const toast = useToast()
   const slots = useQuery({ queryKey: ['slots', pub.publicId], queryFn: () => schedulingApi.slots(pub.publicId) })
   const [blocking, setBlocking] = useState<string | null>(null)
-  const refresh = () => qc.invalidateQueries({ queryKey: ['slots', pub.publicId] })
+  const [busySlot, setBusySlot] = useState<string | null>(null)
+  const withdrawn = pub.status === 'WITHDRAWN'
+  // The day's status can change here (unblocking reopens a withdrawn day), so the list refreshes too.
+  const refresh = () =>
+    Promise.all([qc.invalidateQueries({ queryKey: ['slots', pub.publicId] }), qc.invalidateQueries({ queryKey: ['publications'] })])
+  const unblock = async (slotId: string) => {
+    setBusySlot(slotId)
+    try {
+      await schedulingApi.unblock(slotId)
+      toast(withdrawn ? 'Slot reopened. The day is open for booking again with this slot.' : 'Slot reopened.')
+    } catch (err) {
+      toast(toApiError(err).message, 'error')
+    } finally {
+      setBusySlot(null)
+      await refresh()
+    }
+  }
   return (
     <Dialog open size="lg" onClose={onClose} title={`${AUDIENCE_LABEL[pub.audience]}: ${formatCalendarDate(pub.serviceDate)}`} description={`${pub.slotsGenerated} slots, ${pub.slotMinutes} minutes each. Times are WAT.`}>
+      {withdrawn && (
+        <p className="mb-3 rounded-[12px] bg-amber-note px-3 py-2 text-sm text-gold-700">
+          This day is withdrawn. Unblocking a slot reopens the day with that slot bookable. To reopen every slot the withdrawal blocked, use Reopen day on the list.
+        </p>
+      )}
       {slots.isLoading && <Spinner />}
       {slots.isError && <ErrorState error={slots.error} />}
       <div className="overflow-x-auto">
@@ -78,7 +99,9 @@ function SlotsDialog({ pub, onClose }: { pub: Publication; onClose: () => void }
                 <td className="text-right">
                   {s.state === 'AVAILABLE' && <button type="button" className="btn btn-quiet btn-sm" onClick={() => setBlocking(s.publicId)}>Block</button>}
                   {s.state === 'BLOCKED' && (
-                    <button type="button" className="btn btn-quiet btn-sm" onClick={async () => { await schedulingApi.unblock(s.publicId); toast('Slot reopened.'); await refresh() }}>Unblock</button>
+                    <button type="button" className="btn btn-quiet btn-sm" disabled={busySlot === s.publicId} onClick={() => void unblock(s.publicId)}>
+                      {busySlot === s.publicId ? <Spinner /> : 'Unblock'}
+                    </button>
                   )}
                 </td>
               </tr>
@@ -130,6 +153,11 @@ export function Schedules() {
                     }}>Open for booking</button>
                   )}
                   {p.status === 'PUBLISHED' && can('schedule.publish') && <button type="button" className="btn btn-secondary btn-sm" onClick={() => setWithdrawing(p)}>Withdraw</button>}
+                  {p.status === 'WITHDRAWN' && can('schedule.publish') && p.serviceDate >= watDay(0) && (
+                    <button type="button" className="btn btn-primary btn-sm" onClick={async () => {
+                      try { await schedulingApi.reopen(p.publicId); toast(`${formatCalendarDate(p.serviceDate)} is open for booking again.`); await refresh() } catch (err) { toast(toApiError(err).message, 'error') }
+                    }}>Reopen day</button>
+                  )}
                 </span>
               </li>
             ))}

@@ -39,7 +39,10 @@ export const schedulingApi = {
   /** Stops new bookings. Existing ones stand. */
   withdraw: (id: string, reason: string) => api.post<Publication>(`/admin/schedules/${seg(id)}/withdraw`, null, { params: { reason } }),
   block: (slotId: string, reason: string) => api.post<void>(`/admin/schedules/slots/${seg(slotId)}/block`, null, { params: { reason } }),
+  /** On a withdrawn day this also reopens the day. */
   unblock: (slotId: string) => api.post<void>(`/admin/schedules/slots/${seg(slotId)}/unblock`),
+  /** Withdrawn day back to open: the withdrawal's slots return; other blocks stay. */
+  reopen: (id: string) => api.post<Publication>(`/admin/schedules/${seg(id)}/reopen`),
   rooms: (type?: RoomOption['roomType']) => api.list<RoomOption>('/admin/rooms', { params: { type } }),
   addRoom: (p: { code: string; name: string; roomType: RoomOption['roomType']; capacityNotes?: string }) =>
     api.post<{ publicId: string; code: string }>('/admin/rooms', null, { params: p }),
