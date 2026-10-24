@@ -120,6 +120,20 @@ export const releaseApi = {
       `/hub/releases/${seg(bundlePublicId)}`,
     ),
 
+  /**
+   * Centre bundles only: names the pharmacist or laboratory technician and
+   * moves that kind of open review to them. FNPH bundles use the team panel.
+   */
+  assignCentreReviewer: (
+    bundlePublicId: string,
+    p: { type: 'PHARMACY' | 'LABORATORY'; userPublicId: string; reason: string },
+  ) =>
+    api.post<ReleaseBundle>(
+      `/hub/releases/${seg(bundlePublicId)}/reviewers`,
+      null,
+      { params: p },
+    ),
+
   /** All or nothing. */
   release: (
     bundlePublicId: string,

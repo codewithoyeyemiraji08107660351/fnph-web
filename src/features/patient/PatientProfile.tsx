@@ -5,6 +5,10 @@ import { patientRecordsApi } from '@/lib/api/endpoints/records'
 import { api, toApiError } from '@/lib/api/http'
 import { formatDateTime, initials } from '@/lib/format'
 import { ErrorState } from '@/components/ui/Page'
+import { Dialog } from '@/components/ui/Dialog'
+import { TextAreaField } from '@/components/ui/Field'
+import { useToast } from '@/components/ui/Toast'
+import { supportApi } from '@/lib/api/endpoints/support'
 
 type Profile = { phone: string; email: string; location: string }
 type Field = keyof Profile
@@ -218,6 +222,8 @@ export function PatientProfile() {
         </div>
       </form>
 
+      <CloseAccount ehrNumber={r?.ehrNumber ?? ''} />
+
       {/* ---------- Security ---------- */}
       <Link to="/account" className="pp-security">
         <i className="bi bi-shield-lock" aria-hidden />
@@ -228,5 +234,78 @@ export function PatientProfile() {
         <i className="bi bi-chevron-right" aria-hidden />
       </Link>
     </div>
+  )
+}
+
+/**
+  Asking to close the online account. Google Play requires it in the app.
+  It raises a helpdesk request rather than closing anything at once: the
+  helpdesk confirms it is the patient, then deactivates the account. The
+  medical record stays, as the hospital must keep it.
+*/
+function CloseAccount({ ehrNumber }: { ehrNumber: string }) {
+  const toast = useToast()
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [sent, setSent] = useState(false)
+
+  const send = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      await supportApi.raise({
+        category: 'ACCESS_AND_SIGN_IN',
+        subject: 'Close my online account',
+        body: `The patient asked to close their online telepsychiatry account${ehrNumber ? ` (EHR ${ehrNumber})` : ''}. `
+          + 'Confirm with them, then deactivate the account. The medical record is kept.'
+          + (reason.trim() ? `\n\nReason given: ${reason.trim()}` : ''),
+      })
+      setOpen(false)
+      setSent(true)
+      toast('Request sent. The helpdesk will contact you to confirm.')
+    } catch (err) {
+      setError(toApiError(err).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="pp-form" aria-labelledby="pp-close-title">
+      <div className="pp-form-head">
+        <h2 id="pp-close-title" className="pd2-h2">Close my online account</h2>
+        <p>
+          Stops online access to this service. Your hospital medical record is not deleted.{' '}
+          <Link to="/account-deletion">What closing does</Link>
+        </p>
+      </div>
+      <div className="pp-actions">
+        {sent ? (
+          <span className="pp-saved">Request sent. The helpdesk will contact you.</span>
+        ) : (
+          <button type="button" className="pd2-btn pd2-btn-quiet" onClick={() => setOpen(true)}>
+            Ask to close my account
+          </button>
+        )}
+      </div>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        busy={busy}
+        title="Ask to close your online account?"
+        description="The helpdesk will contact you to confirm before closing it. Your medical record stays with the hospital."
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)} disabled={busy}>Keep my account</button>
+            <button type="button" className="btn btn-primary" onClick={() => void send()} disabled={busy}>{busy ? 'Sending…' : 'Send request'}</button>
+          </>
+        }
+      >
+        {error && <p className="mb-3 text-sm text-alarm">{error}</p>}
+        <TextAreaField label="Anything you want to tell us (optional)" rows={3} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Dialog>
+    </section>
   )
 }

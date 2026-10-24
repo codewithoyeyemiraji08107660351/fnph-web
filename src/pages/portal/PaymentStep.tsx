@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { paymentApi } from '@/lib/api/endpoints/patient'
 import { toApiError } from '@/lib/api/http'
+import { platform } from '@/lib/platform'
 import type { PaymentView } from '@/lib/api/types'
 import { formatNaira, parseServerTime } from '@/lib/format'
 import { usePublicSettings } from '@/lib/hooks/usePublicSettings'
@@ -71,7 +72,8 @@ export function PaymentStep({
   onBack?: () => void
 }) {
   const qc = useQueryClient()
-  const { helpdeskEmail } = usePublicSettings()
+  // The fee the server charges (consultation_fee_ngn), not a figure typed into the page.
+  const { helpdeskEmail, consultationFee } = usePublicSettings()
 
   const history = useQuery({
     queryKey: ['my-payments'],
@@ -95,8 +97,9 @@ export function PaymentStep({
 
     const existing = resumable(history.data)
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Picks up a payment started earlier, once the history has loaded.
     if (existing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPayment(existing)
     }
   }, [history.data, payment])
@@ -131,12 +134,7 @@ export function PaymentStep({
     }
   }
 
-  /**
-   * Automatic status checks are retained only for PENDING payments.
-   *
-   * In the current TEST MODE, status 00 from the initial charge should
-   * already make the payment SUCCESS, so this normally will not run.
-   */
+  /** While a payment is pending, check its status every so often. */
   useEffect(() => {
     if (payment?.status !== 'PENDING') return
 
@@ -172,10 +170,8 @@ export function PaymentStep({
         queryKey: ['my-payments'],
       })
 
-      /**
-       * TEST MODE:
-       * Connect Gateway status 00 is accepted by the backend as SUCCESS.
-       */
+      // Already settled by the server (credit covered it, or Remita test
+      // mode is on in a test environment): nothing to pay.
       if (created.status === 'SUCCESS') {
         return
       }
@@ -192,7 +188,12 @@ export function PaymentStep({
       return
     }
 
-    window.location.assign(payment.paymentLink)
+    // On the website this leaves the page and Remita sends the patient back.
+    // In the app it opens a browser tab over the app; closing it, or Remita's
+    // return link, brings the patient back here and the status is checked.
+    void platform.openPayment(payment.paymentLink, () => {
+      void check(false)
+    })
   }
 
   if (history.isLoading) {
@@ -211,7 +212,7 @@ export function PaymentStep({
         </h1>
 
         <p>
-          The booking calendar unlocks after your ₦10,000
+          The booking calendar unlocks after your {formatNaira(consultationFee)}{' '}
           consultation payment has been accepted by the
           payment service.
         </p>
@@ -254,7 +255,7 @@ export function PaymentStep({
 
               <div className="payment-total">
                 <span>Consultation fee</span>
-                <strong>₦10,000</strong>
+                <strong>{formatNaira(consultationFee)}</strong>
               </div>
 
               <p>

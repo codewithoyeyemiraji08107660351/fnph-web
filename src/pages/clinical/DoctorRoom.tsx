@@ -20,6 +20,8 @@ import { ReasonDialog } from '@/components/ui/ReasonDialog'
 import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { AttachedFiles } from '@/features/files/AttachedFiles'
+import { ReferralDetail } from '@/features/centre/ReferralDetail'
+import { VitalsList } from '@/features/centre/VitalsList'
 import { recordingApi } from '@/lib/api/endpoints/records'
 
 export function DoctorRoom({ kind = 'fnph' }: { kind?: ConsultKind }) {
@@ -124,10 +126,15 @@ export function DoctorRoom({ kind = 'fnph' }: { kind?: ConsultKind }) {
         </div>
 
         <div className="space-y-5">
-          {kind === 'centre' && summary.data?.referralReason && (
+          {kind === 'centre' && (summary.data?.referral || summary.data?.referralReason) && (
             <Panel title="Referral from the centre">
-              <p className="text-sm whitespace-pre-line">{summary.data.referralReason}</p>
-              <p className="mt-2 text-xs text-muted">This is the only clinical context the centre sent. The patient has no FNPH record on this pathway.</p>
+              <ReferralDetail referral={summary.data.referral} fallbackReason={summary.data.referralReason} />
+              <p className="mt-3 text-xs text-muted">What the centre sent. The patient has no FNPH record on this pathway.</p>
+            </Panel>
+          )}
+          {kind === 'centre' && summary.data && (
+            <Panel title="Vitals taken at the centre">
+              <VitalsList vitals={summary.data.vitals} />
             </Panel>
           )}
           {can('upload.read') && (

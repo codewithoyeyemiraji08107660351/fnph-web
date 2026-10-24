@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-patient
 dist-ssr
 *.local
 
@@ -27,3 +28,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# The Android app build address is not secret and the build needs it.
+!.env.patient

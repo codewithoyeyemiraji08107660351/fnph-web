@@ -1099,6 +1099,13 @@ export interface ReleaseBundle {
   /** Null for centre bundles. Keys the hub oversight endpoints. */
   appointmentPublicId?: string | null
 
+  pathway: BundlePathway
+  centreName?: string | null
+  centreAppointmentPublicId?: string | null
+  centreAppointmentReference?: string | null
+  /** Reviews still waiting, and submitted ones that raised a query. */
+  openReviews: DeskReview[]
+
   clinicalNote?: ReleaseClinicalNote | null
   prescriptions?: ReleasePrescription[]
   investigations?: ReleaseInvestigation[]
@@ -1120,7 +1127,12 @@ export interface ReleaseDeskRow {
   outstanding: string[]
   /** Reviews still waiting, and submitted ones that raised a concern. */
   openReviews: DeskReview[]
+  /** CENTRE rows carry the centre patient's local identifier in ehrNumber. */
+  pathway: BundlePathway
+  centreName?: string | null
 }
+
+export type BundlePathway = 'FNPH' | 'CENTRE'
 
 /** ReleaseController.OpenReview */
 export type DeskReviewState = 'UNASSIGNED' | 'NOT_OPENED' | 'IN_PROGRESS' | 'QUERY_RAISED'
@@ -1169,6 +1181,55 @@ export interface ConsultationSummary {
   centreName?: string
   patientName?: string
   referralReason?: string
+  /** Everything the centre wrote on the referral, not only the reason. */
+  referral?: CentreReferralDetail | null
+  /** Readings the centre took, newest first. */
+  vitals?: CentreVitalsReading[]
+}
+
+/** centre/api/CentreClinicalViews#referral */
+export interface CentreReferralDetail {
+  reference?: string | null
+  urgency?: 'ROUTINE' | 'SOON' | 'URGENT' | string | null
+  reason?: string | null
+  assessment?: string | null
+  currentCondition?: string | null
+  relevantMedicines?: string | null
+  previousResults?: string | null
+  submittedAt?: IsoDateTime | null
+}
+
+/** centre/api/CentreClinicalViews#vitals */
+export interface CentreVitalsReading {
+  publicId: string
+  measuredAt: IsoDateTime
+  systolic?: number | null
+  diastolic?: number | null
+  heartRate?: number | null
+  respiratoryRate?: number | null
+  temperature?: number | null
+  weightKg?: number | null
+  heightCm?: number | null
+  bmi?: number | null
+  bloodOxygen?: number | null
+  bloodGlucose?: number | null
+  notes?: string | null
+  recordedBy?: string | null
+}
+
+export type CentreCapability = 'COORDINATION' | 'PHARMACY' | 'LABORATORY' | 'HIM'
+
+export interface CentreVitalsInput {
+  systolic?: number
+  diastolic?: number
+  heartRate?: number
+  respiratoryRate?: number
+  temperature?: number
+  weightKg?: number
+  heightCm?: number
+  bloodOxygen?: number
+  bloodGlucose?: number
+  notes?: string
 }
 
 /** CentreClinicalController#mine */
@@ -1263,6 +1324,13 @@ export interface CentreReferral {
   consentWitnessedBy?: string
   submittedAt?: IsoDateTime
   createdAt: IsoDateTime
+  referralReason?: string
+  assessment?: string | null
+  currentCondition?: string | null
+  relevantMedicines?: string | null
+  previousResults?: string | null
+  /** What FNPH asked for when it returned the referral. */
+  returnedReason?: string | null
 }
 
 export interface CreateReferral {
@@ -1289,6 +1357,10 @@ export interface CentreAppointmentRow {
   referralReference?: string
   /** Why FNPH returned the request, when it did. */
   returnedReason?: string
+  cancellationReason?: string | null
+  cancelledAt?: IsoDateTime | null
+  /** Who did not join, when the session clock closed it unattended. */
+  noShowReason?: string | null
 }
 
 /** CentreController#toQueueItem */
@@ -1298,8 +1370,45 @@ export interface CentreBundleRow {
   patientName: string
   appointmentReference: string
   deliveredAt?: IsoDateTime
-  firstOpenedAt?: IsoDateTime
+  firstOpenedAt?: IsoDateTime | null
   outstanding: boolean
+  treatedAt?: IsoDateTime | null
+  treatedBy?: string | null
+  treatmentNotes?: string | null
+}
+
+/** CentreController.CentreBundleDetail. Lists the caller may not see come back empty. */
+export interface CentreBundleDetail {
+  publicId: string
+  centrePatientId?: string | null
+  patientName: string
+  appointmentReference: string
+  appointmentDate?: IsoDateTime | null
+  doctorName?: string | null
+  releasedAt?: IsoDateTime | null
+  deliveredAt?: IsoDateTime | null
+  firstOpenedAt?: IsoDateTime | null
+  firstOpenedBy?: string | null
+  treatedAt?: IsoDateTime | null
+  treatedBy?: string | null
+  treatmentNotes?: string | null
+  clinicalNote?: ReleaseClinicalNote | null
+  prescriptions: ReleasePrescription[]
+  investigations: ReleaseInvestigation[]
+  followUps: ReleaseFollowUp[]
+  documents: CentreBundleDocument[]
+  /** What each service at the centre recorded doing with this bundle. */
+  actions: Array<{ capability: CentreCapability; actedAt: IsoDateTime; actedBy: string; notes: string }>
+}
+
+export interface CentreBundleDocument {
+  publicId: string
+  documentType: 'PRESCRIPTION' | 'INVESTIGATION_REQUEST' | 'CLINICAL_SUMMARY' | 'FOLLOW_UP_RECOMMENDATION'
+  issueNumber?: string | null
+  status: string
+  expiresAt?: IsoDateTime | null
+  downloadCount: number
+  maxDownloads: number
 }
 
 /** CentreBookingController#centreQueue */
@@ -1310,7 +1419,13 @@ export interface CentreApprovalRow {
   patient: string
   centrePatientId?: string
   appointmentDateTime: IsoDateTime
+  /** The approve dialog checks rota cover for the whole slot, so it needs the end. */
+  scheduledEndAt?: IsoDateTime
+  status?: AppointmentStatus
+  doctorName?: string | null
+  room?: string | null
   referralReason?: string
+  referral?: CentreReferralDetail | null
 }
 
 /** TriageController#mine. Newest response is first. */

@@ -8,15 +8,28 @@ import { formatPhone, formatTime } from '@/lib/format'
 import { useDocumentTitle } from '@/lib/hooks/useDocumentTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { Alert } from '@/components/ui/Alert'
+import { platform } from '@/lib/platform'
 
 export function PatientRoom() {
   const [ready, setReady] = useState(false)
   const [privatePlace, setPrivatePlace] = useState(false)
-  if (ready) return <ConnectedPatientRoom />
-  return <><div className="screen-heading"><span className="eyebrow">Secure waiting room</span><h1>Settle in before meeting your clinician</h1><p>Find a quiet, private place. Keep your medicines and recent results nearby.</p></div><div className="card journey-form"><h2>Prepare for your consultation</h2><p>Check your internet connection and charge your device. Camera and microphone permissions will be requested by the secure consultation room.</p><label className="check-line"><input type="checkbox" checked={privatePlace} onChange={e => setPrivatePlace(e.target.checked)} /><span>I am in a private place and understand that joining late will not extend the fixed 30-minute session.</span></label><button className="live-button" disabled={!privatePlace} onClick={() => setReady(true)}>● Join secure consultation</button><Link to="/portal/appointments">Back to appointments</Link></div></>
+  const [mediaNote, setMediaNote] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+  // In the app, Android asks for camera and microphone here, before the room
+  // loads. A refusal does not stop the patient joining: the doctor can still
+  // hear or call them, so they are told what to change and let in.
+  const join = async () => {
+    setChecking(true)
+    const readiness = await platform.prepareCall()
+    setMediaNote(readiness.ok ? null : readiness.message)
+    setChecking(false)
+    setReady(true)
+  }
+  if (ready) return <ConnectedPatientRoom mediaNote={mediaNote} />
+  return <><div className="screen-heading"><span className="eyebrow">Secure waiting room</span><h1>Settle in before meeting your clinician</h1><p>Find a quiet, private place. Keep your medicines and recent results nearby.</p></div><div className="card journey-form"><h2>Prepare for your consultation</h2><p>Check your internet connection and charge your device. Camera and microphone permissions will be requested by the secure consultation room.</p><label className="check-line"><input type="checkbox" checked={privatePlace} onChange={e => setPrivatePlace(e.target.checked)} /><span>I am in a private place and understand that joining late will not extend the fixed 30-minute session.</span></label><button className="live-button" disabled={!privatePlace || checking} onClick={() => void join()}>{checking ? 'Checking camera and microphone…' : '● Join secure consultation'}</button><Link to="/portal/appointments">Back to appointments</Link></div></>
 }
 
-function ConnectedPatientRoom() {
+function ConnectedPatientRoom({ mediaNote }: { mediaNote: string | null }) {
   useDocumentTitle('Your consultation')
   const { appointmentId = '' } = useParams()
   const { emergencyNumber } = usePublicSettings()
@@ -59,6 +72,7 @@ function ConnectedPatientRoom() {
         </div>
         <p className="text-sm text-muted">The doctor will confirm who you are before starting.</p>
       </div>
+      {mediaNote && <Alert tone="warning" title="Camera or microphone is off">{mediaNote}</Alert>}
       <ConsultFrame roomUrl={session.roomUrl} token={session.token} title="Video consultation" />
       <div className="grid gap-3 text-sm sm:grid-cols-3">
         <p className="rounded-[14px] bg-white p-4"><strong className="block">Somewhere private</strong><span className="text-muted">A quiet room where nobody can overhear.</span></p>

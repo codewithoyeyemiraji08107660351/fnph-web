@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { centreApi } from '@/lib/api/endpoints/centre'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { formatDateTime, formatLongDate, humanise } from '@/lib/format'
+import { useNow } from '@/lib/hooks/useNow'
 import { ErrorState, PageHeader, Panel, Stat } from '@/components/ui/Page'
 import { Badge } from '@/components/ui/Badge'
 import { AppointmentBadge } from '@/components/ui/AppointmentBadge'
@@ -10,6 +11,7 @@ import { Spinner } from '@/components/ui/Spinner'
 
 export function CentreHome() {
   const { can } = useAuth()
+  const now = useNow(60_000)
   const me = useQuery({ queryKey: ['centre-me'], queryFn: centreApi.me })
   const appts = useQuery({ queryKey: ['centre-appointments'], queryFn: centreApi.appointments, enabled: can('centre_referral.read') })
   if (me.isLoading) return <Spinner label="Loading your centre" />
@@ -20,18 +22,18 @@ export function CentreHome() {
   return (
     <>
       <PageHeader
-        kicker={formatLongDate()}
+        kicker={formatLongDate(new Date(now))}
         title={c.name}
         description={`${c.code}${c.lga ? `, ${c.lga}` : ''}. Specialist consultations with FNPH Kaduna for patients registered at this centre.`}
         actions={
-          can('centre_referral.create') && (
+          can('centre_referral.create') && c.status === 'ACTIVE' && (
             <Link to="/centre/patients" className="btn btn-primary no-underline">
               <i aria-hidden className="bi bi-person-plus" /> Refer a patient
             </Link>
           )
         }
       />
-      {c.status !== 'ACTIVE' && <p className="mb-5 rounded-[14px] bg-amber-note px-4 py-3 text-sm text-gold-700">This centre is {humanise(c.status).toLowerCase()}. Referrals cannot be scheduled until FNPH activates it.</p>}
+      {c.status !== 'ACTIVE' && <p className="mb-5 rounded-[14px] bg-amber-note px-4 py-3 text-sm text-gold-700">This centre is {humanise(c.status).toLowerCase()}. New referrals and consultation requests are paused until FNPH activates it. Care bundles already delivered can still be acted on.</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Referrals awaiting a time" value={u.referralsAwaitingScheduling} />
         <Stat label="Consultations scheduled" value={u.referralsScheduled} />
@@ -43,6 +45,7 @@ export function CentreHome() {
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <Panel title="Coming up" action={<Link to="/centre/consultations" className="text-sm font-bold">All consultations</Link>} bodyClassName="">
           {appts.isLoading && <div className="p-5"><Spinner /></div>}
+          {appts.isError && <ErrorState error={appts.error} onRetry={() => appts.refetch()} />}
           {appts.data && upcoming.length === 0 && <p className="px-5 py-4 text-sm text-muted">Nothing scheduled.</p>}
           <ul className="divide-y divide-line">
             {upcoming.map((a) => (

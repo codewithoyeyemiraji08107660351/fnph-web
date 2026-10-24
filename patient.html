@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en-NG">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="FNPH Kaduna telepsychiatry for existing patients: book, pay, join your consultation and collect your documents." />
+    <meta name="theme-color" content="#075b45" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <!--
+      The app is never on the same origin as the API, so the API origin is
+      written in at build time. Video rooms load in a frame from Daily.
+      No viewport-fit=cover: the app sits between the system bars.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        connect-src 'self' __API_ORIGIN__;
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: blob: https:;
+        font-src 'self' data: https:;
+        media-src 'self' blob: https:;
+        frame-src 'self' https://*.daily.co;
+        object-src 'none';
+        base-uri 'self';
+        form-action 'self';
+      "
+    />
+    <link rel="icon" type="image/png" href="/favicon-64.png" />
+    <title>FNPH Telepsychiatry</title>
+  </head>
+  <body>
+    <noscript>This app needs JavaScript. For an emergency, go to the nearest emergency service.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/patient-app/main.tsx"></script>
+  </body>
+</html>

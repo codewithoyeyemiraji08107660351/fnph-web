@@ -6,3 +6,9 @@ dist
 !.env.example
 scripts
 *.log
+
+# Android patient app: not part of the website image.
+android
+assets
+dist-patient
+store

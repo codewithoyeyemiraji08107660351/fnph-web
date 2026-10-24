@@ -20,6 +20,18 @@ const SUPERVISION_KEY = 'fnph.session.viewAs'
 const SUPERVISION_ROUTE_KEY = 'fnph.session.viewAsRoute'
 
 let accessToken: string | null = null
+
+/*
+  Where else the refresh token is kept. The website keeps it in this tab
+  only. The Android app also keeps it in the phone's encrypted storage, so a
+  patient is not signed out when Android closes the app in the background
+  (for example while they pay in the browser tab). See src/patient-app/session.ts.
+*/
+type RefreshTokenSink = (refreshToken: string | null) => void
+let refreshTokenSink: RefreshTokenSink | null = null
+export function keepRefreshTokenWith(sink: RefreshTokenSink) {
+  refreshTokenSink = sink
+}
 let supervisionSessionId: string | null = sessionStorage.getItem(SUPERVISION_KEY)
 let supervisionRoute: string | null = sessionStorage.getItem(SUPERVISION_ROUTE_KEY)
 
@@ -32,11 +44,17 @@ export const tokenStore = {
     }
     accessToken = response.accessToken
     sessionStorage.setItem(REFRESH_KEY, response.refreshToken)
+    refreshTokenSink?.(response.refreshToken)
+  },
+  /** A refresh token kept by the app from its last run. The next request renews the session with it. */
+  adopt(refreshToken: string) {
+    sessionStorage.setItem(REFRESH_KEY, refreshToken)
   },
   clear() {
     accessToken = null
     sessionStorage.removeItem(REFRESH_KEY)
     setSupervisionSession(null)
+    refreshTokenSink?.(null)
   },
 }
 

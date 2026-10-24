@@ -113,6 +113,13 @@ export function PatientExperience({ children }: { children: ReactNode }) {
                     </NavLink>
                   </li>
                 ))}
+                {/* Phones only: the sidebar's own Sign out is hidden at that width. */}
+                <li className="patient-nav-signout">
+                  <button type="button" onClick={() => signOut()}>
+                    <i className="bi bi-box-arrow-left" aria-hidden />
+                    <span>Sign out</span>
+                  </button>
+                </li>
               </ul>
             </nav>
 

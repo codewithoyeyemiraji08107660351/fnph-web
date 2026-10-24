@@ -6,13 +6,12 @@ import { AppShell } from '@/components/layout/AppShell'
 import { RequireAuth, RequirePermission, RequireRole, DashboardRedirect } from '@/lib/auth/guards'
 import { CENTRAL_ADMINISTRATOR, ROLES } from '@/lib/auth/roles'
 import { Landing } from '@/pages/public/Landing'
-import { PatientConsent } from '@/features/patient/PatientConsent'
-import { PatientOnboarding } from '@/features/patient/PatientOnboarding'
-import { PatientProfile } from '@/features/patient/PatientProfile'
 import { PatientEntrance } from '@/pages/public/PatientEntrance'
 import { StaffEntrance } from '@/pages/public/StaffEntrance'
 import { CentreEntrance } from '@/pages/public/CentreEntrance'
 import { Help } from '@/pages/public/Help'
+import { Privacy } from '@/pages/public/Privacy'
+import { AccountDeletion } from '@/pages/public/AccountDeletion'
 import { VerifyDocument } from '@/pages/public/VerifyDocument'
 import { Enrol } from '@/pages/public/Enrol'
 import { NotFound } from '@/pages/public/NotFound'
@@ -22,19 +21,14 @@ import { ResetPassword } from '@/pages/auth/ResetPassword'
 import { Account } from '@/pages/account/Account'
 import { ForcedPasswordChange } from '@/pages/account/ForcedPasswordChange'
 import { WorkspacePending } from '@/pages/workspace/WorkspacePending'
+import { patientPortalRoute } from './patientRoutes'
 
 import { Audit, Configuration, Overview, RoleDetail, Roles, Supervision, UserDetail, Users } from './adminPages'
 import {
-  Appointments,
   Approvals,
-  BookingFlow,
   ConsultationRecordPage,
   DoctorRoom,
   DoctorWorklist,
-  Documents,
-  PatientRoom,
-  PaymentReturn,
-  PortalHome,
   ReleaseBundleView,
   ReleaseDesk,
   ReviewQueries,
@@ -113,21 +107,7 @@ const workspace = (roles: string[], children: Parameters<typeof createBrowserRou
 const CENTRE_ROLES = ['CENTRE_HUB_COORDINATOR', 'CENTRE_ASSISTANT_COORDINATOR', 'CENTRE_PHARMACY', 'CENTRE_LABORATORY', 'CENTRE_HIM']
 
 const phase2Routes = [
-  workspace(['PATIENT'], [
-    { index: true, element: <PortalHome /> },
-    { path: 'onboarding', element: <PatientOnboarding /> },
-    { path: 'consent', element: <PatientConsent /> },
-    { path: 'profile', element: <PatientProfile /> },
-    { path: 'booking', element: gated('slot.hold', <BookingFlow />) },
-    { path: 'payment', element: <PaymentReturn /> },
-    { path: 'payment/return', element: <PaymentReturn /> },
-      { path: 'appointments', element: <Appointments /> },
-      { path: 'appointments/:appointmentId', element: <Appointments /> },
-      { path: 'history', element: <Appointments /> },
-    { path: 'documents', element: gated('document.read_own', <Documents />) },
-    { path: 'consultations/:appointmentId', element: gated('consultation.join_as_patient', <PatientRoom />) },
-    { path: '*', element: <Navigate to="/portal" replace /> },
-  ], 'portal'),
+  patientPortalRoute,
   workspace(['HUB_COORDINATOR'], [
     { index: true, element: gated('release_bundle.read', <HubDashboard />) },
     { path: 'approvals', element: gated('appointment.read', <Approvals />) },
@@ -232,6 +212,8 @@ export const router = createBrowserRouter([
           { path: 'centres', element: <CentreEntrance /> },
           { path: 'sign-in', element: <StaffEntrance /> },
           { path: 'help', element: <Help /> },
+          { path: 'privacy', element: <Privacy /> },
+          { path: 'account-deletion', element: <AccountDeletion /> },
           { path: 'enrol', element: <Enrol /> },
           { path: 'verify', element: <VerifyDocument /> },
           { path: 'verify/:token', element: <VerifyDocument /> },

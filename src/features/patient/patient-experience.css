@@ -3408,6 +3408,34 @@
     font-weight: 700;
   }
 
+  /* Sign out in the navigation row, for phone widths where the sidebar
+     bottom (and its Sign out) is hidden. Looks like the other nav items. */
+  .patient-nav-signout {
+    display: none;
+  }
+
+  .patient-nav-signout button {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #e8f2ed;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .patient-nav-signout button i {
+    display: grid;
+    place-items: center;
+    width: 25px;
+    height: 25px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, .09);
+  }
+
   .patient-app-content {
     min-width: 0;
   }
@@ -3843,6 +3871,17 @@
     .patient-help,
     .patient-side-bottom > button {
       display: none;
+    }
+
+    .patient-nav-signout {
+      display: list-item;
+      list-style: none;
+    }
+
+    .patient-nav-signout button {
+      min-height: 40px;
+      padding: 7px 10px;
+      font-size: .7rem;
     }
 
     .patient-app-sidebar nav {

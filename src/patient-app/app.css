@@ -1,0 +1,23 @@
+/*
+  The Android app's own adjustments to the shared patient design.
+  Loaded only by the patient app; the website never sees these rules.
+*/
+
+/* Sign-in first. On a phone the journey overview pushed the sign-in form
+   below the fold; the app's patients already have it installed. */
+html[data-shell='app'] .journey-sidebar {
+  display: none;
+}
+
+/* The language list does nothing yet, and there is no other portal to
+   switch to from inside the app. */
+html[data-shell='app'] .language-picker,
+html[data-shell='app'] .header-signout {
+  display: none;
+}
+
+/* No overscroll bounce and no grey flash on tap, as in a native app. */
+html[data-shell='app'] body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}

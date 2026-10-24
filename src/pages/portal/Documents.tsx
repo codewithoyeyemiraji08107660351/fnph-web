@@ -4,6 +4,7 @@ import { documentsApi, myRecordsApi } from '@/lib/api/endpoints/patient'
 import { followUpsApi, uploadsApi } from '@/lib/api/endpoints/records'
 import { FileList } from '@/features/files/AttachedFiles'
 import { toApiError } from '@/lib/api/http'
+import { platform } from '@/lib/platform'
 import type { IssuedDocument } from '@/lib/api/types'
 import { formatDateTime, humanise } from '@/lib/format'
 import { EmptyState, ErrorState, PageHeader } from '@/components/ui/Page'
@@ -125,23 +126,7 @@ export function Documents() {
       const { blob, filename } =
         await documentsApi.downloadFile(d.publicId)
 
-      const url = URL.createObjectURL(blob)
-
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-
-      window.setTimeout(() => {
-        URL.revokeObjectURL(url)
-      }, 60_000)
-
-      toast(
-        'Saved. Keep the file somewhere you can find it again.'
-      )
+      toast(await platform.saveFile(blob, filename, d.publicId))
 
       setConfirming(null)
     } catch (err) {
@@ -337,6 +322,21 @@ export function Documents() {
                       className="bi bi-download"
                     />{' '}
                     Download
+                  </button>
+                )}
+
+                {/* App only: the copy kept on this phone opens without using a download. */}
+                {platform.keepsFiles && d.downloadCount > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={async () => {
+                      if (!(await platform.openSaved(d.publicId))) {
+                        toast('No copy is saved on this phone. Read it on screen, or show the verification code.')
+                      }
+                    }}
+                  >
+                    <i aria-hidden className="bi bi-file-earmark-pdf" /> Open saved copy
                   </button>
                 )}
 

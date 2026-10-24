@@ -44,6 +44,9 @@ export function Help() {
       <p className="mt-8 text-sm text-muted">
         Want to confirm a prescription or investigation request? <Link to="/verify">Check a document</Link>.
       </p>
+      <p className="mt-2 text-sm text-muted">
+        <Link to="/privacy">Privacy notice</Link> · <Link to="/account-deletion">Close your online account</Link>
+      </p>
     </div>
   )
 }

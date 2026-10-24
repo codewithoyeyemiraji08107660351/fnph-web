@@ -14,7 +14,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const location = useLocation()
   if (status === 'loading') return <FullPageLoader label="Restoring your session" />
   if (status === 'anonymous' || !principal) {
-    return <Navigate to="/sign-in" replace state={{ from: location.pathname }} />
+    // A patient address goes to patient sign-in. It used to go to staff
+    // sign-in, which asks for a username a patient does not have.
+    const signIn = location.pathname.startsWith('/portal') ? '/patients' : '/sign-in'
+    return <Navigate to={signIn} replace state={{ from: location.pathname }} />
   }
   if (principal.mustChangePassword && location.pathname !== '/account/password') {
     return <Navigate to="/account/password" replace />

@@ -6,12 +6,26 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "dev:patient": "vite --config vite.patient.config.ts",
+    "build:patient": "tsc -b && vite build --config vite.patient.config.ts --mode patient",
+    "android:sync": "npm run build:patient && cap sync android",
+    "android:open": "cap open android",
+    "android:bundle": "npm run android:sync && cd android && ./gradlew bundleRelease",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "mock": "node scripts/mock-api.mjs"
   },
   "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor-community/file-opener": "8.0.1",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2",
     "@daily-co/daily-js": "^0.92.2",
     "@fontsource-variable/dm-sans": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
@@ -27,6 +41,8 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.3",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
