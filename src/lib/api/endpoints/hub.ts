@@ -24,6 +24,7 @@ import type {
   StaffOption,
   ActivityGroup,
   ActivityPage,
+  MissedAppointment,
 } from '../types'
 
 export const approvalsApi = {
@@ -56,6 +57,18 @@ export const approvalsApi = {
   history: (appointmentPublicId: string) =>
     api.list<AppointmentHistory>(
       `/hub/approvals/${seg(appointmentPublicId)}/history`,
+    ),
+
+  /** Missed (NO_SHOW) appointments in the last `days` days not yet given a new time. */
+  missed: (days = 30) =>
+    api.list<MissedAppointment>('/hub/approvals/missed', { params: { days } }),
+
+  /** New appointment at the chosen time, awaiting approval. Nothing is charged again. */
+  rebook: (missedPublicId: string, newSlotPublicId: string, reason: string) =>
+    api.post<Appointment>(
+      `/hub/approvals/missed/${seg(missedPublicId)}/rebook`,
+      null,
+      { params: { newSlotPublicId, reason } },
     ),
 
   /** Gated on appointment.assign_team. The coordinator does not hold user.read. */
