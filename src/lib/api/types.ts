@@ -465,6 +465,19 @@ export interface ApprovalQueue {
   appointments: Appointment[]
 }
 
+/** ApprovalController.missed: a NO_SHOW appointment not yet rebooked. */
+export interface MissedAppointment {
+  publicId: string
+  reference: string
+  appointmentDate: IsoDateTime
+  scheduledEndAt?: IsoDateTime
+  patientName: string
+  ehrNumber: string
+  doctorName?: string | null
+  noShowAt?: IsoDateTime | null
+  noShowReason?: string | null
+}
+
 /** ScheduleDtos.ApproveAppointmentRequest. Field names differ from assign/team. */
 export interface ApproveRequest {
   doctorPublicId: string
