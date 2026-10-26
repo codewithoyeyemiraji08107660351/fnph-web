@@ -4,7 +4,8 @@ import { approvalsApi } from '@/lib/api/endpoints/hub'
 import { centreApprovalsApi } from '@/lib/api/endpoints/centre'
 import { toApiError } from '@/lib/api/http'
 import type { StaffOption } from '@/lib/api/types'
-import { formatDateTime, formatTime, parseServerTime, watDate } from '@/lib/format'
+import { formatDateTime, formatTime, watDate } from '@/lib/format'
+import { choiceLabel, doctorChoices } from './doctorChoices'
 import { Dialog } from '@/components/ui/Dialog'
 import { SelectField, TextAreaField } from '@/components/ui/Field'
 import { Alert } from '@/components/ui/Alert'
@@ -101,30 +102,13 @@ export function ApproveDialog({
   const [error, setError] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
 
-  // The server checks the rota covers the whole slot, so only those doctors are offered.
-  const { eligible, unavailable } = useMemo(() => {
-    const start = parseServerTime(appointment.appointmentDate)?.getTime() ?? 0
-    const end = parseServerTime(appointment.scheduledEndAt)?.getTime() ?? start
-    const rows = availability.data ?? []
-
-    const covering = rows.filter(
-      (a) =>
-        a.available &&
-        (parseServerTime(a.startAt)?.getTime() ?? Infinity) <= start &&
-        (parseServerTime(a.endAt)?.getTime() ?? 0) >= end,
-    )
-
-    const seen = new Set<string>()
-
-    return {
-      eligible: covering.filter((a) =>
-        seen.has(a.doctorPublicId)
-          ? false
-          : (seen.add(a.doctorPublicId), true),
-      ),
-      unavailable: rows.filter((a) => !a.available),
-    }
-  }, [availability.data, appointment])
+  // Any active doctor, like the rest of the team. Doctors marked unavailable
+  // for the slot are shown but cannot be chosen; the rota no longer gates.
+  const doctors = useMemo(
+    () => doctorChoices(staff.data, availability.data, appointment.appointmentDate, appointment.scheduledEndAt),
+    [staff.data, availability.data, appointment.appointmentDate, appointment.scheduledEndAt],
+  )
+  const choosable = doctors.filter((d) => !d.unavailable)
 
   const byRole = (code: string): StaffOption[] =>
     (staff.data ?? []).filter((s) => s.roles.includes(code))
@@ -267,44 +251,34 @@ export function ApproveDialog({
               required
             >
               <option value="">
-                {eligible.length
+                {choosable.length
                   ? 'Choose a doctor'
-                  : 'Nobody available'}
+                  : 'No doctor can take this slot'}
               </option>
 
-              {eligible.map((a) => (
+              {doctors.map((d) => (
                 <option
-                  key={a.doctorPublicId}
-                  value={a.doctorPublicId}
+                  key={d.publicId}
+                  value={d.publicId}
+                  disabled={d.unavailable}
                 >
-                  {a.doctor} ({formatTime(a.startAt)} to{' '}
-                  {formatTime(a.endAt)})
+                  {choiceLabel(d)}
                 </option>
               ))}
             </SelectField>
 
-            {availability.data && eligible.length === 0 && (
+            {staff.data && doctors.length === 0 && (
               <p className="field-error">
-                No doctor on the {serviceDate} rota covers this whole slot.
-                The rota needs updating before this can be approved.
+                No active account holds the doctor role. An administrator can
+                grant it.
               </p>
             )}
 
-            {unavailable.length > 0 && (
-              <details className="mt-2 text-xs text-muted">
-                <summary className="cursor-pointer">
-                  {unavailable.length} marked unavailable that day
-                </summary>
-
-                <ul className="mt-1 space-y-0.5">
-                  {unavailable.map((a) => (
-                    <li key={a.publicId}>
-                      {a.doctor}
-                      {a.reason ? `: ${a.reason}` : ''}
-                    </li>
-                  ))}
-                </ul>
-              </details>
+            {doctors.length > 0 && choosable.length === 0 && (
+              <p className="field-error">
+                Every doctor is marked unavailable for this slot. Change it in
+                Doctor rota, or return the request for another time.
+              </p>
             )}
           </div>
 

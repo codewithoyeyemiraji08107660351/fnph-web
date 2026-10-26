@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { approvalsApi, oversightApi } from '@/lib/api/endpoints/hub'
 import { toApiError } from '@/lib/api/http'
 import type { ReassignableRole } from '@/lib/api/types'
-import { formatDateTime, formatTime, parseServerTime, watDate } from '@/lib/format'
+import { formatDateTime, watDate } from '@/lib/format'
+import { choiceLabel, doctorChoices } from './doctorChoices'
 
 import { Alert } from '@/components/ui/Alert'
 import { Dialog } from '@/components/ui/Dialog'
@@ -18,14 +19,15 @@ interface Option {
   publicId: string
   label: string
   current: boolean
+  disabled?: boolean
 }
 
 /**
  * Assign or replace one person on a consultation's team after approval.
  *
- * Doctors are offered only when their rota covers the whole slot, as on the
- * approval screen; the server also refuses one who has another consultation
- * then. For the pharmacist and laboratory technician, open reviews move with
+ * Every active doctor is offered, as on the approval screen. One marked
+ * unavailable for the slot is shown but cannot be picked, and the server
+ * refuses one who has another consultation then. For the pharmacist and laboratory technician, open reviews move with
  * the role. Picking the person already in the role is allowed only to pick up
  * reviews that were created with nobody assigned.
  */
@@ -56,7 +58,6 @@ export function ReassignDialog({
   const staff = useQuery({
     queryKey: ['assignable-staff', ROLE_CODE[role]],
     queryFn: () => approvalsApi.staff(ROLE_CODE[role]),
-    enabled: !isDoctor,
   })
   const availability = useQuery({
     queryKey: ['availability', serviceDate],
@@ -70,23 +71,9 @@ export function ReassignDialog({
 
   const options: Option[] = useMemo(() => {
     if (isDoctor) {
-      const start = parseServerTime(team.data?.appointmentDate)?.getTime() ?? 0
-      const end = parseServerTime(team.data?.scheduledEndAt)?.getTime() ?? start
-      const seen = new Set<string>()
-      return (availability.data ?? [])
-        .filter(
-          (a) =>
-            a.available &&
-            (parseServerTime(a.startAt)?.getTime() ?? Infinity) <= start &&
-            (parseServerTime(a.endAt)?.getTime() ?? 0) >= end,
-        )
-        .filter((a) => (seen.has(a.doctorPublicId) ? false : (seen.add(a.doctorPublicId), true)))
-        .filter((a) => a.doctorPublicId !== holder?.publicId)
-        .map((a) => ({
-          publicId: a.doctorPublicId,
-          label: `${a.doctor} (on rota ${formatTime(a.startAt)} to ${formatTime(a.endAt)})`,
-          current: false,
-        }))
+      return doctorChoices(staff.data, availability.data, team.data?.appointmentDate, team.data?.scheduledEndAt)
+        .filter((d) => d.publicId !== holder?.publicId)
+        .map((d) => ({ publicId: d.publicId, label: choiceLabel(d), current: false, disabled: d.unavailable }))
     }
     return (staff.data ?? [])
       .filter((s) => s.roles.includes(ROLE_CODE[role]))
@@ -100,8 +87,8 @@ export function ReassignDialog({
   }, [isDoctor, availability.data, staff.data, team.data, holder?.publicId, role, openReviews])
 
   const pick = options.find((o) => o.publicId === chosen)
-  const loading = team.isLoading || (isDoctor ? availability.isLoading : staff.isLoading)
-  const loadError = team.error ?? (isDoctor ? availability.error : staff.error)
+  const loading = team.isLoading || staff.isLoading || (isDoctor && availability.isLoading)
+  const loadError = team.error ?? staff.error ?? (isDoctor ? availability.error : null)
   const reasonShort = reason.trim().length < REASON_MIN
   const roleName = ROLE_LABEL[role].toLowerCase()
 
@@ -178,13 +165,13 @@ export function ReassignDialog({
               onChange={(e) => setChosen(e.target.value)}
               hint={
                 isDoctor
-                  ? 'Only doctors whose rota covers the whole slot are listed. A doctor with another consultation at that time is refused.'
+                  ? 'Every active doctor. One marked unavailable for this slot cannot be chosen, and one with another consultation at that time is refused.'
                   : 'Active hospital staff holding this role.'
               }
             >
               <option value="">Choose…</option>
               {options.map((o) => (
-                <option key={o.publicId} value={o.publicId}>
+                <option key={o.publicId} value={o.publicId} disabled={o.disabled}>
                   {o.label}
                 </option>
               ))}
@@ -193,7 +180,7 @@ export function ReassignDialog({
             {options.length === 0 && (
               <Alert tone="warning">
                 {isDoctor
-                  ? `No other doctor on the ${serviceDate} rota covers this whole slot.`
+                  ? 'No other active doctor. An administrator can grant the doctor role.'
                   : `Nobody else holds the ${roleName} role. An administrator can grant it.`}
               </Alert>
             )}
