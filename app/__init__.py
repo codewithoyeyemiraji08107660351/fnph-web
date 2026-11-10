@@ -1,6 +1,6 @@
 import os
 from flask import Flask, jsonify, render_template
-from .extensions import db, migrate, login_manager, crsf, limiter
+from .extensions import db, migrate, login_manager, csrf, limiter
 from .models import User
 
 def create_app(test_config=None):
@@ -19,8 +19,27 @@ def create_app(test_config=None):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
-    crsf.init_app(app)
+    csrf.init_app(app)
     limiter.init_app(app)
+
+
+    from .controllers.auth import auth_bp
+    from .controllers.main import main_bp
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(main_bp)
+
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        try:
+            return db.session.get(User, int(user_id))
+        except (TypeError, ValueError):
+            return None
+        
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return render_template("error/404.html"), 404
+       
 
 
 

@@ -13,12 +13,11 @@ class User(UserMixin, TimestampMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
-    email = db.Model.Column(db.String(200), nullable=False, unique=True)
-    #123 -kdsklgrruy90fl;esd.fhkf
+    email = db.Column(db.String(200), nullable=False, unique=True)
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(50), nullable=False, default="staff")
     is_active_account = db.Column(db.Boolean, nullable=False, default = True)
-    __table_args__ = (CheckConstraint("role in('admin', 'manager', 'staff')", name="ck_users_role"))
+    __table_args__ = (CheckConstraint("role in('admin', 'manager', 'staff')", name="ck_users_role"),)
 
 
     def set_password(self, password):
@@ -36,7 +35,11 @@ class Category(TimestampMixin, db.Model):
      id = db.Column(db.Integer, primary_key=True)
      name = db.Column(db.String(200), nullable=False, unique=True)
      description = db.Column(db.String(500), nullable=True)
-     products = db.Column("Product", back_populates="category")
+     products = db.relationship("Product", back_populates="category")
 
 
-
+#Suppliers
+class Suppliers(TimestampMixin, db.Model):
+    pass
+#Products
+#StockMovement
