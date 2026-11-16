@@ -1,0 +1,4 @@
+flask --app run.py db init
+flask --app run.py db migrate -m "Initial database migration"
+flask --app run.py db upgrade
+flask --app run.py run --debug
