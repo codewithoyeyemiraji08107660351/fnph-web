@@ -569,6 +569,21 @@ function FollowUpsSection({
   )
 }
 
+/**
+ * A prescription or investigation the doctor never issued. It has no review,
+ * so the server does not wait on it and it is not outstanding.
+ */
+const notRequested = (c: {
+  componentType: string
+  complete: boolean
+  notRequired: boolean
+  outstanding: boolean
+}) =>
+  (c.componentType === 'PRESCRIPTION' || c.componentType === 'INVESTIGATION') &&
+  !c.complete &&
+  !c.notRequired &&
+  !c.outstanding
+
 export function ClinicalContents({
   bundle,
   heading = 'Clinical contents',
@@ -843,6 +858,13 @@ export function ReleaseBundleView() {
                         'no reason given'}
                     </p>
                   )}
+
+                  {notRequested(component) && (
+                    <p className="text-sm text-muted">
+                      The doctor did not issue one, so there is no review to
+                      wait for.
+                    </p>
+                  )}
                 </div>
 
                 {component.complete ? (
@@ -856,6 +878,10 @@ export function ReleaseBundleView() {
                 ) : component.outstanding ? (
                   <Badge tone="gold">
                     Outstanding
+                  </Badge>
+                ) : notRequested(component) ? (
+                  <Badge>
+                    Not requested
                   </Badge>
                 ) : (
                   <Badge tone="navy">

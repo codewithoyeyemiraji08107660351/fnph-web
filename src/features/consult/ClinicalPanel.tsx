@@ -551,6 +551,8 @@ function ComponentBadge({ state, issued }: { state?: ConsultationRecord['compone
   if (state?.notRequired) return <Badge>Not needed</Badge>
   if (state?.complete) return <Badge tone="green">Complete</Badge>
   if (issued) return <Badge tone="navy">In review</Badge>
+  // Nothing issued: the release does not wait on it.
+  if (state?.settled) return <Badge>Not issued</Badge>
   return <Badge tone="gold">Outstanding</Badge>
 }
 
